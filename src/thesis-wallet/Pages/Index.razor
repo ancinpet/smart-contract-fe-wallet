@@ -1,0 +1,137 @@
+﻿@page "/"
+@inject IJSRuntime jsRuntime;
+@inject IEthereumHostProvider _ethereumHostProvider;
+@inject NethereumAuthenticator  _nethereumAuthenticator;
+@using Nethereum.Contracts
+@using Nethereum.Hex.HexTypes;
+
+@if (EthereumAvailable == true && !string.IsNullOrEmpty(SelectedAccount))
+{
+    <div class="card m-1">
+        <div class="card-body">
+            <div class="row">
+                <label class="col-sm-3 col-form-label-lg">Selected Account:</label>
+                <div class="col-sm-6">
+                    @SelectedAccount
+                    <small id="selectedAccountHelp" class="form-text text-muted">The selected account is bound to the host (ie Metamask) on change</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card m-1">
+        <div class="card-body">
+            <div class="row">
+                <label class="col-sm-3 col-form-label-lg">Block hash of block number 0:</label>
+                <div class="col-sm-6">
+                    <button @onclick="@GetBlockHashAsync">Get BlockHash</button>
+                    <div>@BlockHash</div>
+                    <small id="selectedAccountHelp" class="form-text text-muted">With Metamask calls are redirected to its configured node (i.e http://localhost:8545)</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card m-1">
+        <div class="card-body">
+            <div class="row">
+                <label class="col-sm-3 col-form-label-lg">Authentication by signing:</label>
+                <div class="col-sm-6">
+                    <button @onclick="@TransferEtherAsync">Authenticate</button>
+                    <div>@AuthenticatedAccount</div>
+                    <small id="selectedAccountHelp" class="form-text text-muted">Creating an unique challenge per authentication request, allows us to recover and validate what account has signed the message</small>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div>
+        Please connect to Ethereum !
+    </div>
+
+}
+    @code{
+
+        bool EthereumAvailable { get; set; }
+        string SelectedAccount { get; set; }
+        string BlockHash { get; set; }
+        string TransactionHash { get; set; }
+        string ErrorTransferMessage { get; set; }
+        protected string AuthenticatedAccount { get; set; }
+
+        protected override async Task OnInitializedAsync()
+        {
+            _ethereumHostProvider.SelectedAccountChanged += HostProvider_SelectedAccountChanged;
+            EthereumAvailable = await _ethereumHostProvider.CheckProviderAvailabilityAsync();
+        }
+
+
+        private async Task HostProvider_SelectedAccountChanged(string account)
+        {
+            SelectedAccount = account;
+            this.StateHasChanged();
+        }
+
+
+        protected async Task GetBlockHashAsync()
+        {
+            var web3 = await _ethereumHostProvider.GetWeb3Async();
+            var block = await web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(new HexBigInteger(1));
+            BlockHash = block.BlockHash;
+        }
+
+        protected async Task TransferEtherAsync()
+        {
+            try
+            {
+                string smartContractAddress = "0x1e3ae53099A2913bbCc7C67A216CC16aB54894C8";
+                string abiStandardToken = @"[{""constant"":true,""inputs"":[{""internalType"":""uint256"",""name"":"""",""type"":""uint256""}],""name"":""adopters"",""outputs"":[{""internalType"":""address"",""name"":"""",""type"":""address""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""constant"":false,""inputs"":[{""internalType"":""uint256"",""name"":""petId"",""type"":""uint256""}],""name"":""adopt"",""outputs"":[{""internalType"":""uint256"",""name"":"""",""type"":""uint256""}],""payable"":false,""stateMutability"":""nonpayable"",""type"":""function""},{""constant"":true,""inputs"":[],""name"":""getAdopters"",""outputs"":[{""internalType"":""address[16]"",""name"":"""",""type"":""address[16]""}],""payable"":false,""stateMutability"":""view"",""type"":""function""}]";
+                var web3 = await _ethereumHostProvider.GetWeb3Async();
+                var contract = web3.Eth.GetContract(abiStandardToken, smartContractAddress);
+                Function adopters = contract.GetFunction("getAdopters");
+                List<Nethereum.ABI.FunctionEncoding.ParameterOutput> result = await adopters.CallDecodingToDefaultAsync();
+                foreach (Nethereum.ABI.FunctionEncoding.ParameterOutput x in result) {
+                    Console.WriteLine(x.DataIndexStart);
+                    Console.WriteLine(x.Parameter.ABIType);
+                    Console.WriteLine(x.Parameter.DecodedType);
+                    Console.WriteLine(x.Parameter.Indexed);
+                    Console.WriteLine(x.Parameter.InternalType);
+                    Console.WriteLine(x.Parameter.Name);
+                    Console.WriteLine(x.Parameter.Order);
+                    Console.WriteLine(x.Parameter.Type);
+                    Console.WriteLine("xxxxxxxxxx");
+                    foreach (var z in (List<object>)x.Result) {
+                        Console.WriteLine(z);                
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ErrorTransferMessage = ex.Message;
+            }
+        }
+
+        protected async Task TryPets()
+        {
+            try
+            {
+                var web3 = await _ethereumHostProvider.GetWeb3Async();
+
+                TransactionHash = await web3.Eth.GetEtherTransferService().TransferEtherAsync("0x13f022d72158410433cbd66f5dd8bf6d2d129924", 0.001m);
+            }
+            catch (Exception ex)
+            {
+                ErrorTransferMessage = ex.Message;
+            }
+        }
+
+        public async Task AuthenticateAsync()
+        {
+
+            AuthenticatedAccount = await _nethereumAuthenticator.RequestNewChallengeSignatureAndRecoverAccountAsync();
+
+        }
+    }

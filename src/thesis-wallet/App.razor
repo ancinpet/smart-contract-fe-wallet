@@ -1,0 +1,24 @@
+<MatThemeProvider Theme="@theme">
+    <MatPortalHost></MatPortalHost>
+    <Router AppAssembly="@typeof(Program).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p>Sorry, there's nothing at this address.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</MatThemeProvider>
+
+
+@code
+{
+    MatTheme theme = new MatTheme()
+    {
+        Primary = "#1a73e8",
+        Background = "#1a73e8",
+        Surface = "#ffffff"
+    };
+}
