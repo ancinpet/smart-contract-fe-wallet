@@ -2,34 +2,31 @@
 @inject IEthereumHostProvider _metamaskHostProvider;
 @inject NethereumAuthenticator  _nethereumAuthenticator;
 
-<div>
-    @if (MetamaskAvailable && !string.IsNullOrEmpty(SelectedAccount))
-    {
-        @SelectedAccount
-    }
 
-    @if (MetamaskAvailable && string.IsNullOrEmpty(SelectedAccount))
-    {
-        <button type="button" class="btnMetamask" @onclick="@EnableEthereumAsync">Connect Metamask</button>
-    }
+<div class="mat-layout-grid">
+    <div class="mat-layout-grid-inner">
+        <div class="mat-layout-grid-cell mat-layout-grid-cell-span-12">
+            <div style="text-align: center;">
+                <MatH3>Please connect to Ethereum using Metamask!</MatH3>
+                @if (MetamaskAvailable && string.IsNullOrEmpty(SelectedAccount)) {
+                    <MatH3><MatButtonLink Icon="extension" Raised="true" OnClick="@EnableEthereumAsync" Href="/">Connect Metamask</MatButtonLink></MatH3>
+                }
 
-    @if (!MetamaskAvailable)
-    {
-        <button class="btnMetamask" disabled>Please Install Metamask</button>
-    }
-
+                @if (!MetamaskAvailable) {
+                    <MatH3><MatButtonLink Icon="extension" Href="https://metamask.io/" Raised="true">Download Metamask</MatButtonLink></MatH3>
+                }
+            </div>
+        </div>
+    </div>
 </div>
 
 @code {
-
     bool MetamaskAvailable { get; set; }
     string SelectedAccount { get; set; }
     protected string AuthenticatedAccount { get; set; }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
             _metamaskHostProvider.SelectedAccountChanged += MetamaskHostProvider_SelectedAccountChanged;
             MetamaskAvailable = await _metamaskHostProvider.CheckProviderAvailabilityAsync();
 
@@ -37,19 +34,12 @@
         }
     }
 
-    private async Task MetamaskHostProvider_SelectedAccountChanged(string account)
-    {
+    private async Task MetamaskHostProvider_SelectedAccountChanged(string account) {
         SelectedAccount = account;
-        this.StateHasChanged();
+        await this.InvokeAsync(StateHasChanged);
     }
 
-    protected async Task EnableEthereumAsync()
-    {
+    protected async Task EnableEthereumAsync() {
         SelectedAccount = await _metamaskHostProvider.EnableProviderAsync();
-    }
-
-    public async Task AuthenticateAsync()
-    {
-        AuthenticatedAccount = await _nethereumAuthenticator.RequestNewChallengeSignatureAndRecoverAccountAsync();
     }
 }

@@ -4,9 +4,57 @@
 @inject NethereumAuthenticator  _nethereumAuthenticator;
 @using Nethereum.Contracts
 @using Nethereum.Hex.HexTypes;
+@using System.IO
+@using System.Text.Json;
+@using System.Text.Json.Serialization;
+@using Newtonsoft.Json.Linq
+@using System.Text
 
-@if (EthereumAvailable == true && !string.IsNullOrEmpty(SelectedAccount))
-{
+
+@if (EthereumAvailable == true && !string.IsNullOrEmpty(SelectedAccount)) {    
+    <MatFAB Icon="@MatIconNames.Home" Label="Dashboard"></MatFAB>
+    <MatFAB Icon="@MatIconNames.Note_add" Label="Watch contract" OnClick="@menu.OpenContractDialog"></MatFAB>
+    <MatDialog @bind-IsOpen="@menu.dialogIsOpen">
+        <MatDialogTitle>Watch a contract</MatDialogTitle>
+        <MatDialogContent>
+            <p>Das Contract name</p>
+            <MatTextField Outlined="true" @bind-Value="@menu.dasContractName" style="width: 30em;"></MatTextField>
+            <p>Das Contract address</p>
+            <MatTextField Outlined="true" @bind-Value="@menu.dasContractAddress" style="width: 30em;"></MatTextField>
+            <p>Das Contract ABI</p>
+            <MatTextField Outlined="true" @bind-Value="@menu.dasContractABI" style="width: 30em;"></MatTextField>
+            <p>Das Contract form file (xml)</p>
+            <InputFile OnChange="menu.LoadFilesDialog" accept=".xml" />
+        </MatDialogContent>
+        <MatDialogActions>
+            <MatButton OnClick="@menu.CancelContractDialog">Cancel</MatButton>
+            <MatButton OnClick="@menu.SubmitContractDialog">Add</MatButton>
+        </MatDialogActions>
+    </MatDialog>
+    <div class="mat-layout-grid">
+        <div class="mat-layout-grid-inner">
+            <div class="mat-layout-grid-cell mat-layout-grid-cell-span-3">
+                @foreach (DasContractItem item in menu.Contracts) {                     
+                    <MatTreeView TNode="TreeNodeModel" RootNode="@item.ViewRoot" GetChildNodesCallback="@((n)=>n.Nodes)">
+                        <NodeTemplate>
+                            @context.Name
+                        </NodeTemplate>
+                    </MatTreeView>
+                }
+            </div>
+            <div class="mat-layout-grid-cell mat-layout-grid-cell-span-9">
+                Rest
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+
+
+
     <div class="card m-1">
         <div class="card-body">
             <div class="row">
@@ -47,91 +95,184 @@
 }
 else
 {
-    <div>
-        Please connect to Ethereum !
-    </div>
-
+     <Metamask />
 }
-    @code{
-
-        bool EthereumAvailable { get; set; }
-        string SelectedAccount { get; set; }
-        string BlockHash { get; set; }
-        string TransactionHash { get; set; }
-        string ErrorTransferMessage { get; set; }
-        protected string AuthenticatedAccount { get; set; }
-
-        protected override async Task OnInitializedAsync()
-        {
-            _ethereumHostProvider.SelectedAccountChanged += HostProvider_SelectedAccountChanged;
-            EthereumAvailable = await _ethereumHostProvider.CheckProviderAvailabilityAsync();
-        }
 
 
-        private async Task HostProvider_SelectedAccountChanged(string account)
-        {
-            SelectedAccount = account;
-            this.StateHasChanged();
-        }
+@code{
+    DasContractMenu menu = new DasContractMenu();
+    bool EthereumAvailable { get; set; }
+    string SelectedAccount { get; set; }
+    string BlockHash { get; set; }
+    string TransactionHash { get; set; }
+    string ErrorTransferMessage { get; set; }
+    protected string AuthenticatedAccount { get; set; }
 
+    protected override async Task OnInitializedAsync() {
+        _ethereumHostProvider.SelectedAccountChanged += AccountChanged;
+        EthereumAvailable = await _ethereumHostProvider.CheckProviderAvailabilityAsync();
+    }
 
-        protected async Task GetBlockHashAsync()
-        {
+    private async Task AccountChanged(string account) {
+        SelectedAccount = account;
+        await this.InvokeAsync(StateHasChanged);
+    }
+
+    protected async Task GetBlockHashAsync() {
+        var web3 = await _ethereumHostProvider.GetWeb3Async();
+        var block = await web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(new HexBigInteger(1));
+        BlockHash = block.BlockHash;
+    }
+
+    protected async Task TransferEtherAsync() {
+        try {
+            string smartContractAddress = "0x1e3ae53099A2913bbCc7C67A216CC16aB54894C8";
+            string abiStandardToken = @"[{""constant"":true,""inputs"":[{""internalType"":""uint256"",""name"":"""",""type"":""uint256""}],""name"":""adopters"",""outputs"":[{""internalType"":""address"",""name"":"""",""type"":""address""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""constant"":false,""inputs"":[{""internalType"":""uint256"",""name"":""petId"",""type"":""uint256""}],""name"":""adopt"",""outputs"":[{""internalType"":""uint256"",""name"":"""",""type"":""uint256""}],""payable"":false,""stateMutability"":""nonpayable"",""type"":""function""},{""constant"":true,""inputs"":[],""name"":""getAdopters"",""outputs"":[{""internalType"":""address[16]"",""name"":"""",""type"":""address[16]""}],""payable"":false,""stateMutability"":""view"",""type"":""function""}]";
             var web3 = await _ethereumHostProvider.GetWeb3Async();
-            var block = await web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(new HexBigInteger(1));
-            BlockHash = block.BlockHash;
-        }
-
-        protected async Task TransferEtherAsync()
-        {
-            try
-            {
-                string smartContractAddress = "0x1e3ae53099A2913bbCc7C67A216CC16aB54894C8";
-                string abiStandardToken = @"[{""constant"":true,""inputs"":[{""internalType"":""uint256"",""name"":"""",""type"":""uint256""}],""name"":""adopters"",""outputs"":[{""internalType"":""address"",""name"":"""",""type"":""address""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""constant"":false,""inputs"":[{""internalType"":""uint256"",""name"":""petId"",""type"":""uint256""}],""name"":""adopt"",""outputs"":[{""internalType"":""uint256"",""name"":"""",""type"":""uint256""}],""payable"":false,""stateMutability"":""nonpayable"",""type"":""function""},{""constant"":true,""inputs"":[],""name"":""getAdopters"",""outputs"":[{""internalType"":""address[16]"",""name"":"""",""type"":""address[16]""}],""payable"":false,""stateMutability"":""view"",""type"":""function""}]";
-                var web3 = await _ethereumHostProvider.GetWeb3Async();
-                var contract = web3.Eth.GetContract(abiStandardToken, smartContractAddress);
-                Function adopters = contract.GetFunction("getAdopters");
-                List<Nethereum.ABI.FunctionEncoding.ParameterOutput> result = await adopters.CallDecodingToDefaultAsync();
-                foreach (Nethereum.ABI.FunctionEncoding.ParameterOutput x in result) {
-                    Console.WriteLine(x.DataIndexStart);
-                    Console.WriteLine(x.Parameter.ABIType);
-                    Console.WriteLine(x.Parameter.DecodedType);
-                    Console.WriteLine(x.Parameter.Indexed);
-                    Console.WriteLine(x.Parameter.InternalType);
-                    Console.WriteLine(x.Parameter.Name);
-                    Console.WriteLine(x.Parameter.Order);
-                    Console.WriteLine(x.Parameter.Type);
-                    Console.WriteLine("xxxxxxxxxx");
-                    foreach (var z in (List<object>)x.Result) {
-                        Console.WriteLine(z);                
-                    }
+            var contract = web3.Eth.GetContract(abiStandardToken, smartContractAddress);
+            Function adopters = contract.GetFunction("getAdopters");
+            List<Nethereum.ABI.FunctionEncoding.ParameterOutput> result = await adopters.CallDecodingToDefaultAsync();
+            foreach (Nethereum.ABI.FunctionEncoding.ParameterOutput x in result) {
+                Console.WriteLine(x.DataIndexStart);
+                Console.WriteLine(x.Parameter.ABIType);
+                Console.WriteLine(x.Parameter.DecodedType);
+                Console.WriteLine(x.Parameter.Indexed);
+                Console.WriteLine(x.Parameter.InternalType);
+                Console.WriteLine(x.Parameter.Name);
+                Console.WriteLine(x.Parameter.Order);
+                Console.WriteLine(x.Parameter.Type);
+                Console.WriteLine("xxxxxxxxxx");
+                foreach (var z in (List<object>)x.Result) {
+                    Console.WriteLine(z);                
                 }
-
             }
-            catch (Exception ex)
-            {
-                ErrorTransferMessage = ex.Message;
-            }
-        }
-
-        protected async Task TryPets()
-        {
-            try
-            {
-                var web3 = await _ethereumHostProvider.GetWeb3Async();
-
-                TransactionHash = await web3.Eth.GetEtherTransferService().TransferEtherAsync("0x13f022d72158410433cbd66f5dd8bf6d2d129924", 0.001m);
-            }
-            catch (Exception ex)
-            {
-                ErrorTransferMessage = ex.Message;
-            }
-        }
-
-        public async Task AuthenticateAsync()
-        {
-
-            AuthenticatedAccount = await _nethereumAuthenticator.RequestNewChallengeSignatureAndRecoverAccountAsync();
-
+        } catch (Exception ex) {
+            ErrorTransferMessage = ex.Message;
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+    /* MENU */
+    class TreeNodeModel {
+        public TreeNodeModel(string name) {
+            if (string.IsNullOrWhiteSpace(name)) {
+                Name = "";
+                return;
+            }
+            Name = name;
+            StringBuilder newName = new StringBuilder(Name.Length * 2);
+            newName.Append(char.ToUpper(Name[0]));
+            for (int i = 1; i < Name.Length; ++i) {
+                if (char.IsUpper(Name[i])) {
+                    newName.Append(' ');
+                }
+                newName.Append(Name[i]);
+            }
+            Name = newName.ToString();
+        }
+
+        public string Name { get; set; }
+        public List<TreeNodeModel> Nodes { get; set; } = new List<TreeNodeModel>();
+    }
+
+    class DasContractFunc {
+        public DasContractFunc(JObject entry) {
+            Name = entry.GetValue("name").ToString();
+            foreach (JObject item in entry.GetValue("inputs")) {
+                Inputs.Add(item.GetValue("name").ToString());
+            }
+        }
+
+        public string Name { get; set; }
+        public List<string> Inputs { get; set; } = new List<string>();
+    }
+
+    class DasContractItem {
+        public DasContractItem(string contractName, string contractAddress, string contractABI, string contractForm) {
+            ContractName = contractName;
+            ContractAddress = contractAddress;
+            ContractABI = contractABI;
+            ContractForm = contractForm;
+            ViewRoot = new TreeNodeModel(contractName);
+
+            try {
+                JObject ABIEntry = JObject.Parse(contractABI);
+                foreach (JObject entry in ABIEntry["abi"]) {
+                    if (entry.GetValue("type").ToString() == "function") {
+                        Functions.Add(new DasContractFunc(entry));
+                    }
+                }
+                foreach (DasContractFunc func in Functions) {
+                    ViewRoot.Nodes.Add(new TreeNodeModel(func.Name));
+                }
+            } catch (Exception e) {
+                Console.WriteLine(e);
+            }
+        }
+        
+        public string ContractName { get; set; }
+        public string ContractAddress { get; set; }
+        public string ContractABI { get; set; }
+        public string ContractForm { get; set; }
+        public List<DasContractFunc> Functions { get; set; } = new List<DasContractFunc>();
+        public TreeNodeModel ViewRoot { get; set; }
+    }
+
+    class DasContractMenu {
+        public List<DasContractItem> Contracts { get; set; } = new List<DasContractItem>();
+
+        public bool dialogIsOpen = false;
+        public string dasContractName = "";
+        public string dasContractAddress = "";
+        public string dasContractABI = "";
+        public string dasFormFile = "";
+    
+        public void OpenContractDialog() {
+            dialogIsOpen = true;
+        }
+ 
+        public void SubmitContractDialog() {
+            DasContractItem tmp = new DasContractItem(dasContractName, dasContractAddress, dasContractABI, dasFormFile);
+            Contracts.Add(tmp);
+
+            dialogIsOpen = false;
+            dasContractName = "";
+            dasContractAddress = "";
+            dasContractABI = "";
+            dasFormFile = "";
+        }
+ 
+        public void CancelContractDialog() {
+            dialogIsOpen = false;
+            dasContractName = "";
+            dasContractAddress = "";
+            dasContractABI = "";
+            dasFormFile = "";
+        }        
+
+        public async Task LoadFilesDialog(InputFileChangeEventArgs e) {
+            try {
+                foreach (var file in e.GetMultipleFiles(1)) {
+                    using var reader = new StreamReader(file.OpenReadStream(100*1024));
+                    dasFormFile = await reader.ReadToEndAsync();
+                }
+            } catch (Exception ex) {
+                Console.WriteLine(ex.Message);
+            }
+        }
+        
+    }
+
+
+
+
+}
