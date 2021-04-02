@@ -9,86 +9,62 @@
 @using System.Text.Json.Serialization;
 @using Newtonsoft.Json.Linq
 @using System.Text
+@using System.Xml.Serialization
+@using System.Xml
 
 
-@if (EthereumAvailable == true && !string.IsNullOrEmpty(SelectedAccount)) {    
-    <MatFAB Icon="@MatIconNames.Home" Label="Dashboard"></MatFAB>
-    <MatFAB Icon="@MatIconNames.Note_add" Label="Watch contract" OnClick="@menu.OpenContractDialog"></MatFAB>
-    <MatDialog @bind-IsOpen="@menu.dialogIsOpen">
-        <MatDialogTitle>Watch a contract</MatDialogTitle>
+@if (EthereumAvailable == true && !string.IsNullOrEmpty(SelectedAccount)) {
+    <MatDialog @bind-IsOpen="@menu.existingDialogIsOpen">
+        <MatDialogTitle>Join existing contract</MatDialogTitle>
         <MatDialogContent>
-            <p>Das Contract name</p>
-            <MatTextField Outlined="true" @bind-Value="@menu.dasContractName" style="width: 30em;"></MatTextField>
             <p>Das Contract address</p>
             <MatTextField Outlined="true" @bind-Value="@menu.dasContractAddress" style="width: 30em;"></MatTextField>
-            <p>Das Contract ABI</p>
-            <MatTextField Outlined="true" @bind-Value="@menu.dasContractABI" style="width: 30em;"></MatTextField>
-            <p>Das Contract form file (xml)</p>
+            <p>Das Contract Form file (xml)</p>
             <InputFile OnChange="menu.LoadFilesDialog" accept=".xml" />
         </MatDialogContent>
         <MatDialogActions>
-            <MatButton OnClick="@menu.CancelContractDialog">Cancel</MatButton>
-            <MatButton OnClick="@menu.SubmitContractDialog">Add</MatButton>
+            <MatButton OnClick="@menu.CancelExistingContractDialog">Cancel</MatButton>
+            <MatButton OnClick="@menu.SubmitExistingContractDialog">Add</MatButton>
         </MatDialogActions>
     </MatDialog>
     <div class="mat-layout-grid">
         <div class="mat-layout-grid-inner">
             <div class="mat-layout-grid-cell mat-layout-grid-cell-span-3">
-                @foreach (DasContractItem item in menu.Contracts) {                     
-                    <MatTreeView TNode="TreeNodeModel" RootNode="@item.ViewRoot" GetChildNodesCallback="@((n)=>n.Nodes)">
-                        <NodeTemplate>
-                            @context.Name
-                        </NodeTemplate>
-                    </MatTreeView>
-                }
+                <div class="mat-layout-grid-inner">
+                    <div class="mat-layout-grid-cell mat-layout-grid-cell-align-middle mat-layout-grid-cell-span-4">
+                        <div style="display:flex;justify-content:center;">
+                            <MatFAB Icon="@MatIconNames.Home" Raised="true"></MatFAB>
+                        </div>
+                        <div style="display:flex;justify-content:center;">
+                            <MatButtonLink Href="" Style="font-size:0.8em">Dashboard</MatButtonLink>
+                        </div>
+                    </div>
+                    <div class="mat-layout-grid-cell mat-layout-grid-cell-span-4">
+                        <div style="display:flex;justify-content:center;">
+                            <MatFAB Icon="@MatIconNames.Note_add" Raised="true"></MatFAB>
+                        </div>
+                        <div style="display:flex;justify-content:center;">
+                            <MatButtonLink Href="" Style="font-size:0.8em">New contract</MatButtonLink>
+                        </div>
+                    </div>
+                    <div class="mat-layout-grid-cell mat-layout-grid-cell-span-4">
+                        <div style="display:flex;justify-content:center;">
+                            <MatFAB Icon="@MatIconNames.Pageview" Raised="true" OnClick="@menu.OpenExistingContractDialog"></MatFAB>
+                        </div>
+                        <div style="display:flex;justify-content:center;">
+                            <MatButtonLink Href="" Style="font-size:0.8em" OnClick="@menu.OpenExistingContractDialog">Join existing</MatButtonLink>
+                        </div>
+                    </div>
+                </div>                
+                <MatTreeView TNode="TreeNodeModel" RootNodes="@menu.ViewRoots" GetChildNodesCallback="@((n)=>n.Nodes)" @bind-SelectedNode="@menu.SelectedNode" @bind-SelectedNode:event="SelectedNodeChanged">
+                    <NodeTemplate>
+                        @context.Name
+                    </NodeTemplate>
+                </MatTreeView>
             </div>
             <div class="mat-layout-grid-cell mat-layout-grid-cell-span-9">
                 Rest
-            </div>
-        </div>
-    </div>
-
-
-
-
-
-
-
-
-    <div class="card m-1">
-        <div class="card-body">
-            <div class="row">
-                <label class="col-sm-3 col-form-label-lg">Selected Account:</label>
-                <div class="col-sm-6">
-                    @SelectedAccount
-                    <small id="selectedAccountHelp" class="form-text text-muted">The selected account is bound to the host (ie Metamask) on change</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card m-1">
-        <div class="card-body">
-            <div class="row">
-                <label class="col-sm-3 col-form-label-lg">Block hash of block number 0:</label>
-                <div class="col-sm-6">
-                    <button @onclick="@GetBlockHashAsync">Get BlockHash</button>
-                    <div>@BlockHash</div>
-                    <small id="selectedAccountHelp" class="form-text text-muted">With Metamask calls are redirected to its configured node (i.e http://localhost:8545)</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card m-1">
-        <div class="card-body">
-            <div class="row">
-                <label class="col-sm-3 col-form-label-lg">Authentication by signing:</label>
-                <div class="col-sm-6">
-                    <button @onclick="@TransferEtherAsync">Authenticate</button>
-                    <div>@AuthenticatedAccount</div>
-                    <small id="selectedAccountHelp" class="form-text text-muted">Creating an unique challenge per authentication request, allows us to recover and validate what account has signed the message</small>
-                </div>
+                @menu.SelectedNode?.Name
             </div>
         </div>
     </div>
@@ -126,11 +102,21 @@ else
 
     protected async Task TransferEtherAsync() {
         try {
-            string smartContractAddress = "0x1e3ae53099A2913bbCc7C67A216CC16aB54894C8";
+            string smartContractAddress = "0xCc838408bF5B77b60970b60F4F5c977b1f11F514";
             string abiStandardToken = @"[{""constant"":true,""inputs"":[{""internalType"":""uint256"",""name"":"""",""type"":""uint256""}],""name"":""adopters"",""outputs"":[{""internalType"":""address"",""name"":"""",""type"":""address""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""constant"":false,""inputs"":[{""internalType"":""uint256"",""name"":""petId"",""type"":""uint256""}],""name"":""adopt"",""outputs"":[{""internalType"":""uint256"",""name"":"""",""type"":""uint256""}],""payable"":false,""stateMutability"":""nonpayable"",""type"":""function""},{""constant"":true,""inputs"":[],""name"":""getAdopters"",""outputs"":[{""internalType"":""address[16]"",""name"":"""",""type"":""address[16]""}],""payable"":false,""stateMutability"":""view"",""type"":""function""}]";
             var web3 = await _ethereumHostProvider.GetWeb3Async();
             var contract = web3.Eth.GetContract(abiStandardToken, smartContractAddress);
-            Function adopters = contract.GetFunction("getAdopters");
+            var contractHandler = web3.Eth.GetContractHandler(smartContractAddress);
+            Console.WriteLine(contractHandler.EthApiContractService.GetCode.ToString());
+            Function adoptapet = contract.GetFunction("adopt");
+            object[] paramser = new object[1]{ 3 };
+            var transactionHash = await adoptapet.SendTransactionAsync(SelectedAccount, new HexBigInteger(63721), null, paramser);
+            Console.WriteLine(transactionHash);
+            
+            
+            
+            
+            /*Function adopters = contract.GetFunction("getAdopters");
             List<Nethereum.ABI.FunctionEncoding.ParameterOutput> result = await adopters.CallDecodingToDefaultAsync();
             foreach (Nethereum.ABI.FunctionEncoding.ParameterOutput x in result) {
                 Console.WriteLine(x.DataIndexStart);
@@ -145,7 +131,7 @@ else
                 foreach (var z in (List<object>)x.Result) {
                     Console.WriteLine(z);                
                 }
-            }
+            }*/
         } catch (Exception ex) {
             ErrorTransferMessage = ex.Message;
         }
@@ -163,100 +149,100 @@ else
 
     /* MENU */
     class TreeNodeModel {
-        public TreeNodeModel(string name) {
-            if (string.IsNullOrWhiteSpace(name)) {
-                Name = "";
-                return;
-            }
+        public TreeNodeModel(string name, Form form = null) {
             Name = name;
-            StringBuilder newName = new StringBuilder(Name.Length * 2);
-            newName.Append(char.ToUpper(Name[0]));
-            for (int i = 1; i < Name.Length; ++i) {
-                if (char.IsUpper(Name[i])) {
-                    newName.Append(' ');
-                }
-                newName.Append(Name[i]);
-            }
-            Name = newName.ToString();
+            Form = form;
         }
 
         public string Name { get; set; }
+        public Form Form { get; set; }
         public List<TreeNodeModel> Nodes { get; set; } = new List<TreeNodeModel>();
     }
 
-    class DasContractFunc {
-        public DasContractFunc(JObject entry) {
-            Name = entry.GetValue("name").ToString();
-            foreach (JObject item in entry.GetValue("inputs")) {
-                Inputs.Add(item.GetValue("name").ToString());
+    class DasContractItem {        
+        public string ContractAddress { get; set; }
+        public DContract DasContract { get; set; }
+
+        public DasContractItem(string contractForm, string other, bool deploy) {
+            using (TextReader reader = new StringReader(contractForm)) {
+                XmlSerializer serializer = create_throwing_serializer();
+                XmlReader xmlreader = new XmlTextReader(reader);
+                try {
+                    DasContract = (DContract)serializer.Deserialize(xmlreader);
+                } catch (Exception e) {
+                    Console.WriteLine("Error parsing XML!\n" + $"Error:\n{e.Message}\n{e.StackTrace}");
+                    return;
+                }
             }
-        }
-
-        public string Name { get; set; }
-        public List<string> Inputs { get; set; } = new List<string>();
-    }
-
-    class DasContractItem {
-        public DasContractItem(string contractName, string contractAddress, string contractABI, string contractForm) {
-            ContractName = contractName;
-            ContractAddress = contractAddress;
-            ContractABI = contractABI;
-            ContractForm = contractForm;
-            ViewRoot = new TreeNodeModel(contractName);
-
-            try {
-                JObject ABIEntry = JObject.Parse(contractABI);
-                foreach (JObject entry in ABIEntry["abi"]) {
-                    if (entry.GetValue("type").ToString() == "function") {
-                        Functions.Add(new DasContractFunc(entry));
-                    }
-                }
-                foreach (DasContractFunc func in Functions) {
-                    ViewRoot.Nodes.Add(new TreeNodeModel(func.Name));
-                }
-            } catch (Exception e) {
-                Console.WriteLine(e);
+            if (deploy) {                
+                ContractAddress = "";
+            } else {
+                ContractAddress = other;                
             }
         }
         
-        public string ContractName { get; set; }
-        public string ContractAddress { get; set; }
-        public string ContractABI { get; set; }
-        public string ContractForm { get; set; }
-        public List<DasContractFunc> Functions { get; set; } = new List<DasContractFunc>();
-        public TreeNodeModel ViewRoot { get; set; }
+        private void Serializer_Throw(object sender, XmlElementEventArgs e) {
+            throw new Exception("XML format exception.");
+        }
+        private void Serializer_Throw(object sender, XmlAttributeEventArgs e) {
+            throw new Exception("XML format exception.");
+        }
+        private void Serializer_Throw(object sender, XmlNodeEventArgs e) {
+            throw new Exception("XML format exception.");
+        }
+        
+        private XmlSerializer create_throwing_serializer() {
+            XmlSerializer serializer = new XmlSerializer(typeof(DContract));
+            serializer.UnknownAttribute += new XmlAttributeEventHandler(Serializer_Throw);
+            serializer.UnknownElement += new XmlElementEventHandler(Serializer_Throw);
+            serializer.UnknownNode += new XmlNodeEventHandler(Serializer_Throw);
+            return serializer;
+        }
     }
 
     class DasContractMenu {
-        public List<DasContractItem> Contracts { get; set; } = new List<DasContractItem>();
-
-        public bool dialogIsOpen = false;
-        public string dasContractName = "";
+        public List<TreeNodeModel> ViewRoots { get; set; } = new List<TreeNodeModel>();
+        private TreeNodeModel selectedNode;
+        public TreeNodeModel SelectedNode {
+            get {
+                return selectedNode;
+            }
+            set {
+                if (value?.Form != null) {
+                    selectedNode = value;
+                }
+            }
+        }
+        public List<DasContractItem> availableContracts = new List<DasContractItem>();
+        public bool existingDialogIsOpen = false;
+        public bool newDialogIsOpen = false;
+        public string dasContractBytecode = "";
         public string dasContractAddress = "";
-        public string dasContractABI = "";
         public string dasFormFile = "";
     
-        public void OpenContractDialog() {
-            dialogIsOpen = true;
+        public void OpenExistingContractDialog() {
+            existingDialogIsOpen = true;
         }
  
-        public void SubmitContractDialog() {
-            DasContractItem tmp = new DasContractItem(dasContractName, dasContractAddress, dasContractABI, dasFormFile);
-            Contracts.Add(tmp);
+        public void SubmitExistingContractDialog() {
+            DasContractItem item = new DasContractItem(dasFormFile, dasContractAddress, false);
+            availableContracts.Add(item);            
+            TreeNodeModel root = new TreeNodeModel(item.DasContract.Name);
 
-            dialogIsOpen = false;
-            dasContractName = "";
+            foreach (Form form in item.DasContract.Forms) {
+                root.Nodes.Add(new TreeNodeModel(form.Label, form));
+            }
+            ViewRoots.Add(root);
+
+            existingDialogIsOpen = false;
+            dasContractBytecode = "";
             dasContractAddress = "";
-            dasContractABI = "";
-            dasFormFile = "";
         }
  
-        public void CancelContractDialog() {
-            dialogIsOpen = false;
-            dasContractName = "";
+        public void CancelExistingContractDialog() {
+            existingDialogIsOpen = false;
+            dasContractBytecode = "";
             dasContractAddress = "";
-            dasContractABI = "";
-            dasFormFile = "";
         }        
 
         public async Task LoadFilesDialog(InputFileChangeEventArgs e) {
@@ -268,11 +254,6 @@ else
             } catch (Exception ex) {
                 Console.WriteLine(ex.Message);
             }
-        }
-        
+        }   
     }
-
-
-
-
 }
