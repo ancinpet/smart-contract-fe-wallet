@@ -1,0 +1,32 @@
+﻿
+
+@if (!String.IsNullOrEmpty(field.Label)) {
+    <span>@field.Label</span><br>
+}
+<MatRadioGroup Items="@field.Data" Outlined="true" Style="min-width: 100%">    
+    <ItemTemplate>
+        @if (field.Vertical) {
+            <div>
+                <MatRadioButton Disabled="@field.ReadOnly" Value="@context">@context</MatRadioButton>
+            </div>
+        } else {
+            <MatRadioButton Disabled="@field.ReadOnly" Value="@context">@context</MatRadioButton>
+        }
+    </ItemTemplate>
+</MatRadioGroup>
+@if (!String.IsNullOrEmpty(field.Description)) {
+    <MatTooltip Tooltip="@field.Description">
+        <div @ref="context.Current" style="display:inline-block;">
+            <MatIcon Style="font-size:2.2em;vertical-align:middle;">help_outline</MatIcon>
+        </div>
+    </MatTooltip>
+}
+
+@code {
+    [CascadingParameter]
+    Form form { get; set; }
+    [CascadingParameter]
+    FieldGroup group { get; set; }
+    [CascadingParameter]
+    EnumField field { get; set; }
+}

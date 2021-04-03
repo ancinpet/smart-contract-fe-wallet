@@ -33,10 +33,10 @@
                 <div class="mat-layout-grid-inner">
                     <div class="mat-layout-grid-cell mat-layout-grid-cell-align-middle mat-layout-grid-cell-span-4">
                         <div style="display:flex;justify-content:center;">
-                            <MatFAB Icon="@MatIconNames.Home" Raised="true"></MatFAB>
+                            <MatFAB Icon="@MatIconNames.Home" Raised="true" OnClick="@menu.LoadDashboard"></MatFAB>
                         </div>
                         <div style="display:flex;justify-content:center;">
-                            <MatButtonLink Href="" Style="font-size:0.8em">Dashboard</MatButtonLink>
+                            <MatButtonLink Href="" Style="font-size:0.8em" OnClick="@menu.LoadDashboard">Dashboard</MatButtonLink>
                         </div>
                     </div>
                     <div class="mat-layout-grid-cell mat-layout-grid-cell-span-4">
@@ -55,16 +55,25 @@
                             <MatButtonLink Href="" Style="font-size:0.8em" OnClick="@menu.OpenExistingContractDialog">Join existing</MatButtonLink>
                         </div>
                     </div>
-                </div>                
-                <MatTreeView TNode="TreeNodeModel" RootNodes="@menu.ViewRoots" GetChildNodesCallback="@((n)=>n.Nodes)" @bind-SelectedNode="@menu.SelectedNode" @bind-SelectedNode:event="SelectedNodeChanged">
+                </div>
+                <br />
+                <MatDivider></MatDivider>
+                <MatH5 Style="text-align:center;line-height:110%;padding-top:0.2em">Contract list</MatH5>
+                <MatDivider></MatDivider>
+                <MatTreeView TNode="TreeNodeModel" IsNodeExpandedCallback="@menu.ItemIsExpanded" RootNodes="@menu.ViewRoots" GetChildNodesCallback="@((n)=>n.Nodes)" @bind-SelectedNode="@menu.SelectedNode" @bind-SelectedNode:event="SelectedNodeChanged">
                     <NodeTemplate>
                         @context.Name
                     </NodeTemplate>
                 </MatTreeView>
             </div>
             <div class="mat-layout-grid-cell mat-layout-grid-cell-span-9">
-                Rest
-                @menu.SelectedNode?.Name
+                @if (menu != null && menu.SelectedNode != null && menu.SelectedNode.Form != null) {
+                    <CascadingValue Value="@menu.SelectedNode.Form">
+                        <DForm></DForm>
+                    </CascadingValue>
+            } else {
+                    <span>Dashboard goes here</span>
+                }
             </div>
         </div>
     </div>
@@ -157,6 +166,7 @@ else
         public string Name { get; set; }
         public Form Form { get; set; }
         public List<TreeNodeModel> Nodes { get; set; } = new List<TreeNodeModel>();
+        public bool IsExpanded { get; set; } = true;
     }
 
     class DasContractItem {        
@@ -210,6 +220,8 @@ else
             set {
                 if (value?.Form != null) {
                     selectedNode = value;
+                } else if (value != null) {
+                    value.IsExpanded = !value.IsExpanded;
                 }
             }
         }
@@ -220,6 +232,14 @@ else
         public string dasContractAddress = "";
         public string dasFormFile = "";
     
+        public void LoadDashboard() {
+            selectedNode = null;
+        }
+
+        public bool ItemIsExpanded(TreeNodeModel model) {
+            return model.IsExpanded;
+        }
+
         public void OpenExistingContractDialog() {
             existingDialogIsOpen = true;
         }
@@ -238,12 +258,12 @@ else
             dasContractBytecode = "";
             dasContractAddress = "";
         }
- 
+
         public void CancelExistingContractDialog() {
             existingDialogIsOpen = false;
             dasContractBytecode = "";
             dasContractAddress = "";
-        }        
+        }
 
         public async Task LoadFilesDialog(InputFileChangeEventArgs e) {
             try {

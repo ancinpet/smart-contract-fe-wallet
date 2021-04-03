@@ -1,0 +1,23 @@
+﻿<style>
+    .mat-checkbox>label {
+        margin-bottom: 0px;
+    }
+</style>
+
+<MatCheckbox @bind-Value="field.Data" Label="@field.Label" Disabled="@field.ReadOnly" Style="vertical-align:middle;"></MatCheckbox>
+@if (!String.IsNullOrEmpty(field.Description)) {
+    <MatTooltip Tooltip="@field.Description">
+        <div @ref="context.Current" style="display:inline-block;">
+            <MatIcon Style="font-size:2.2em;vertical-align:middle;">help_outline</MatIcon>
+        </div>
+    </MatTooltip>
+}
+
+@code {
+    [CascadingParameter]
+    Form form { get; set; }
+    [CascadingParameter]
+    FieldGroup group { get; set; }
+    [CascadingParameter]
+    BoolField field { get; set; }
+}

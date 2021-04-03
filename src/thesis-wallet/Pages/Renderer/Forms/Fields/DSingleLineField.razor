@@ -1,0 +1,21 @@
+﻿
+
+@if (!String.IsNullOrEmpty(field.Description)) {
+    <MatTextField @bind-Value="field.Data" Label="@field.Label" ReadOnly="@field.ReadOnly" Outlined="true" Style="min-width: 90%"></MatTextField>
+    <MatTooltip Tooltip="@field.Description">
+        <div @ref="context.Current" style="display:inline-block;">
+            <MatIcon Style="font-size:2.2em;vertical-align:middle;">help_outline</MatIcon>
+        </div>
+    </MatTooltip>
+} else {
+    <MatTextField @bind-Value="field.Data" Label="@field.Label" ReadOnly="@field.ReadOnly" Outlined="true" style="min-width: 100%"></MatTextField>    
+}
+
+@code {
+    [CascadingParameter]
+    Form form { get; set; }
+    [CascadingParameter]
+    FieldGroup group { get; set; }
+    [CascadingParameter]
+    SingleLineField field { get; set; }
+}

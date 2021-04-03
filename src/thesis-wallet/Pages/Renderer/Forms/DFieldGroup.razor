@@ -1,0 +1,43 @@
+﻿@using thesis_wallet.Pages.Renderer.Forms.Fields
+
+@if (group != null && group.Displayed) {
+    @if (!String.IsNullOrEmpty(group.Label)) {
+        <MatSubtitle2>
+            @group.Label
+        </MatSubtitle2>
+    }
+
+    @if (group.Vertical) {
+        @foreach (Field field in group.Fields) {
+            <CascadingValue Value="@field">
+                <DField></DField>
+            </CascadingValue>
+            <br />
+            <br />
+        }
+    } else {
+        <div class="mat-layout-grid" style="padding: 0px">
+            <div class="mat-layout-grid-inner">
+        @foreach (Field field in group.Fields) {
+                <div class="mat-layout-grid-cell mat-layout-grid-cell-span-@(Math.Ceiling(12.0 / group.Fields.Count))">
+                    <CascadingValue Value="@field">
+                        <DField></DField>
+                    </CascadingValue>
+                </div>
+        }
+            </div>
+        </div>
+        <br />
+    }
+
+
+
+    
+}
+
+@code {
+    [CascadingParameter]
+    Form form { get; set; }
+    [CascadingParameter]
+    FieldGroup group { get; set; }
+}

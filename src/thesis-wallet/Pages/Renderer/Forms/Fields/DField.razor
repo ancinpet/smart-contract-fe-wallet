@@ -1,0 +1,62 @@
+﻿
+
+@if (field != null) {
+    @switch ((object)field) {
+        case DateField tfield:
+            <CascadingValue Value="@tfield">
+                <DDateField></DDateField>
+            </CascadingValue>
+            break;
+        case AddressField tfield:
+            <CascadingValue Value="@tfield">
+                <DAddressField></DAddressField>
+            </CascadingValue>
+            break;
+        case SingleLineField tfield:
+            <CascadingValue Value="@tfield">
+                <DSingleLineField></DSingleLineField>
+            </CascadingValue>
+            break;
+        case MultiLineField tfield:
+            <CascadingValue Value="@tfield">
+                <DMultiLineField></DMultiLineField>
+            </CascadingValue>
+            break;
+        case IntField tfield:
+            <CascadingValue Value="@tfield">
+                <DIntField></DIntField>
+            </CascadingValue>
+            break;
+        case DecimalField tfield:
+            <CascadingValue Value="@tfield">
+                <DDecimalField></DDecimalField>
+            </CascadingValue>
+            break;
+        case BoolField tfield:
+            <CascadingValue Value="@tfield">
+                <DBoolField></DBoolField>
+            </CascadingValue>
+            break;
+        case EnumField tfield:
+            <CascadingValue Value="@tfield">
+                <DEnumField></DEnumField>
+            </CascadingValue>
+            break;
+        case DropdownField tfield:
+            <CascadingValue Value="@tfield">
+                <DDropdownField></DDropdownField>
+            </CascadingValue>
+            break;
+        default:
+            break;
+    }
+}
+
+@code {
+    [CascadingParameter]
+    Form form { get; set; }
+    [CascadingParameter]
+    FieldGroup group { get; set; }
+    [CascadingParameter]
+    Field field { get; set; }
+}
