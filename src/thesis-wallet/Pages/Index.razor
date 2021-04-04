@@ -2,23 +2,26 @@
 @inject IJSRuntime jsRuntime;
 @inject IEthereumHostProvider _ethereumHostProvider;
 @inject NethereumAuthenticator  _nethereumAuthenticator;
+@using Nethereum.ABI.FunctionEncoding
 @using Nethereum.Contracts
 @using Nethereum.Hex.HexTypes;
 @using System.IO
 @using System.Text.Json;
 @using System.Text.Json.Serialization;
+@using Nethereum.Web3
 @using Newtonsoft.Json.Linq
 @using System.Text
 @using System.Xml.Serialization
 @using System.Xml
+@using System.Collections
 
 
-@if (EthereumAvailable == true && !string.IsNullOrEmpty(SelectedAccount)) {
+@if (EthereumAvailable == true && !string.IsNullOrEmpty(menu.SelectedAccount)) {
     <MatDialog @bind-IsOpen="@menu.existingDialogIsOpen">
         <MatDialogTitle>Join existing contract</MatDialogTitle>
         <MatDialogContent>
             <p>Das Contract address</p>
-            <MatTextField Outlined="true" @bind-Value="@menu.dasContractAddress" style="width: 30em;"></MatTextField>
+            <MatTextField Outlined="true" @bind-Value="@menu.dasContractAddress" style="width:30em;"></MatTextField>
             <p>Das Contract Form file (xml)</p>
             <InputFile OnChange="menu.LoadFilesDialog" accept=".xml" />
         </MatDialogContent>
@@ -68,8 +71,10 @@
             </div>
             <div class="mat-layout-grid-cell mat-layout-grid-cell-span-9">
                 @if (menu != null && menu.SelectedNode != null && menu.SelectedNode.Form != null) {
-                    <CascadingValue Value="@menu.SelectedNode.Form">
-                        <DForm></DForm>
+                    <CascadingValue Value="@menu.SelectedNode.DasContractItem">
+                        <CascadingValue Value="@menu.SelectedNode.Form">
+                            <DForm @ref="menu.dForm"></DForm>
+                        </CascadingValue>
                     </CascadingValue>
             } else {
                     <span>Dashboard goes here</span>
@@ -77,9 +82,7 @@
             </div>
         </div>
     </div>
-}
-else
-{
+} else {
      <Metamask />
 }
 
@@ -87,7 +90,6 @@ else
 @code{
     DasContractMenu menu = new DasContractMenu();
     bool EthereumAvailable { get; set; }
-    string SelectedAccount { get; set; }
     string BlockHash { get; set; }
     string TransactionHash { get; set; }
     string ErrorTransferMessage { get; set; }
@@ -96,10 +98,12 @@ else
     protected override async Task OnInitializedAsync() {
         _ethereumHostProvider.SelectedAccountChanged += AccountChanged;
         EthereumAvailable = await _ethereumHostProvider.CheckProviderAvailabilityAsync();
+        menu.w3 = await _ethereumHostProvider.GetWeb3Async();
     }
 
     private async Task AccountChanged(string account) {
-        SelectedAccount = account;
+        menu.SelectedAccount = account;
+        menu.LoadFormData(menu.SelectedNode);
         await this.InvokeAsync(StateHasChanged);
     }
 
@@ -119,7 +123,7 @@ else
             Console.WriteLine(contractHandler.EthApiContractService.GetCode.ToString());
             Function adoptapet = contract.GetFunction("adopt");
             object[] paramser = new object[1]{ 3 };
-            var transactionHash = await adoptapet.SendTransactionAsync(SelectedAccount, new HexBigInteger(63721), null, paramser);
+            var transactionHash = await adoptapet.SendTransactionAsync(menu.SelectedAccount, new HexBigInteger(63721), null, paramser);
             Console.WriteLine(transactionHash);
             
             
@@ -158,12 +162,14 @@ else
 
     /* MENU */
     class TreeNodeModel {
-        public TreeNodeModel(string name, Form form = null) {
+        public TreeNodeModel(string name, DasContractItem contract = null, Form form = null) {
             Name = name;
+            DasContractItem = contract;
             Form = form;
         }
 
         public string Name { get; set; }
+        public DasContractItem DasContractItem { get; set; }
         public Form Form { get; set; }
         public List<TreeNodeModel> Nodes { get; set; } = new List<TreeNodeModel>();
         public bool IsExpanded { get; set; } = true;
@@ -211,6 +217,8 @@ else
     }
 
     class DasContractMenu {
+        public DForm dForm { get; set; }
+        public Web3 w3 { get; set; }
         public List<TreeNodeModel> ViewRoots { get; set; } = new List<TreeNodeModel>();
         private TreeNodeModel selectedNode;
         public TreeNodeModel SelectedNode {
@@ -220,6 +228,7 @@ else
             set {
                 if (value?.Form != null) {
                     selectedNode = value;
+                    LoadFormData(selectedNode);
                 } else if (value != null) {
                     value.IsExpanded = !value.IsExpanded;
                 }
@@ -231,6 +240,150 @@ else
         public string dasContractBytecode = "";
         public string dasContractAddress = "";
         public string dasFormFile = "";
+        public string SelectedAccount = "";
+
+        public async void LoadFormData(TreeNodeModel item) {
+            if (item == null) {
+                return;
+            }
+
+            foreach (FieldGroup fieldGroup in item.Form.FieldGroups) {
+                foreach (Field field in fieldGroup.Fields) {
+                    if (!String.IsNullOrEmpty(field.ViewBind)) {
+                        string fixated = "fixated:";
+                        if (field.ViewBind.Substring(0, fixated.Length) == fixated) {
+                            string remainder = field.ViewBind.Substring(fixated.Length);
+                            if (remainder == "myAccountAddress") {
+                                field.SetData(SelectedAccount);
+                            } else if (remainder == "myContractAddress") {
+                                field.SetData(item.DasContractItem.ContractAddress);
+                            } else {
+                                field.SetData(remainder);
+                            }
+                        } else {
+                            /* 0xCc838408bF5B77b60970b60F4F5c977b1f11F514 */
+                            var contract = w3.Eth.GetContract(item.DasContractItem.DasContract.ABI, item.DasContractItem.ContractAddress);
+                            ViewToken tokenized = TokenizeCall(field.ViewBind);
+                            Function dataView = contract.GetFunction(tokenized.FuncName);
+                            object[] paramsToCall = tokenized.Parameters.Cast<object>().ToArray();
+                            List<ParameterOutput> retValues = await dataView.CallDecodingToDefaultAsync(paramsToCall);
+
+                            List<string> output = OutputFromResult(retValues, tokenized, field);
+                            if (output.Count == 1) {
+                                field.SetData(output[0]);
+                            } else {
+                                field.SetDataList(output);
+                            }
+                        }
+                    }
+                }
+            }
+            dForm.refresh();
+        }
+
+        private List<string> OutputFromResult(List<ParameterOutput> retValues, ViewToken tokenized, Field field) {
+            List<string> output = new List<string>();
+            List<ParameterOutput> outputsToProcess = new List<ParameterOutput>();
+            if (!String.IsNullOrEmpty(tokenized.Property)) {                
+                foreach (ParameterOutput retValue in retValues) {
+                    if (retValue.Parameter.Name == tokenized.Property) {
+                        outputsToProcess.Add(retValue);
+                        break;
+                    }    
+                }
+            } else {
+                outputsToProcess.AddRange(retValues);
+            }
+
+            if (outputsToProcess.Count == 1) {
+                ParameterOutput singleReturn = outputsToProcess[0];
+                if (typeof(IEnumerable).IsAssignableFrom(singleReturn.Parameter.DecodedType)) {
+                    List<object> resArray = (List<object>)singleReturn.Result;
+                    if (tokenized.Index >= 0) {
+                        if (resArray.Count > tokenized.Index) {
+                            output.Add(resArray[tokenized.Index].ToString());
+                        } else {
+                            Console.WriteLine($"Ignoring field {field.Label}. Index out of bounds for array retrieved from {field.ViewBind}!");
+                        }                                            
+                    } else {
+                        foreach (object res in resArray) {
+                            output.Add(res.ToString());
+                        }
+                    }
+                } else {
+                    output.Add(singleReturn.Result.ToString());
+                }
+            } else {
+                if (tokenized.Index >= 0) {
+                    if (outputsToProcess.Count > tokenized.Index) {
+                        ParameterOutput singleReturn = outputsToProcess[tokenized.Index];
+                        if (typeof(IEnumerable).IsAssignableFrom(singleReturn.Parameter.DecodedType)) {
+                            List<object> resArray = (List<object>)singleReturn.Result;
+                            foreach (object res in resArray) {
+                                output.Add(res.ToString());
+                            }
+                        } else {
+                            output.Add(singleReturn.Result.ToString());
+                        }
+                    } else {
+                        Console.WriteLine($"Ignoring field {field.Label}. Index out of bounds for parameter order from {field.ViewBind}!");
+                    }   
+                }
+            }
+
+            return output;            
+        }
+
+        private string TokenizeParams(ViewToken token, string prepend, string format) {
+            if (format == ")") {
+                return prepend;
+            }
+
+            string[] second = format.Split(')');
+            foreach (string funcParam in second[0].Split(',')) {
+                token.Parameters.Add(funcParam);
+            }
+            if (second.Length == 1) {
+                return prepend;
+            }
+            return prepend + second[1];    
+        }
+
+        private string TokenizeProperty(ViewToken token, string prepend, string format) {
+            string[] third = format.Split('[');
+            if (third.Length == 1) {
+                token.Property = format;
+                return prepend;
+            }
+            token.Property = third[0];
+            return prepend + '[' + third[1];
+        }
+
+        private ViewToken TokenizeCall(string format) {
+            format = format.Replace(" ", String.Empty);
+            ViewToken token = new ViewToken();
+
+            string[] first = format.Split('(');
+            if (first.Length == 2) {
+                format = TokenizeParams(token, first[0], first[1]);
+            }
+
+            string[] second = format.Split('.');
+            if (second.Length == 2) {
+                format = TokenizeProperty(token, second[0], second[1]);
+            }
+
+            string[] third = format.Split('[');
+            if (third.Length == 2) {
+                token.FuncName = third[0];
+                string indexer = third[1].Replace("]", String.Empty);
+                token.Index = Convert.ToInt32(indexer);                
+            } else {
+                token.FuncName = format;
+            }
+
+            return token;
+        }
     
         public void LoadDashboard() {
             selectedNode = null;
@@ -250,7 +403,7 @@ else
             TreeNodeModel root = new TreeNodeModel(item.DasContract.Name);
 
             foreach (Form form in item.DasContract.Forms) {
-                root.Nodes.Add(new TreeNodeModel(form.Label, form));
+                root.Nodes.Add(new TreeNodeModel(form.Label, item, form));
             }
             ViewRoots.Add(root);
 
@@ -275,5 +428,12 @@ else
                 Console.WriteLine(ex.Message);
             }
         }   
+    }
+
+    class ViewToken {
+        public string FuncName { get; set; } = "";
+        public List<string> Parameters { get; set; } = new List<string>();
+        public string Property { get; set; } = "";
+        public int Index { get; set; } = -1;
     }
 }

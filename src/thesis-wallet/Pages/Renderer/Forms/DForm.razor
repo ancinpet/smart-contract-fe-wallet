@@ -27,4 +27,8 @@
 @code {
     [CascadingParameter]
     Form form { get; set; }
+
+    public void refresh() {
+        StateHasChanged();
+    }
 }
