@@ -1,8 +1,15 @@
-﻿
+﻿@using static thesis_wallet.Pages.Index
 
-<MatButton Raised="true" Style="height:3em;font-size:1.3em;">Submit</MatButton>
+
+<MatButton Raised="true" Style="height:3em;font-size:1.3em;" OnClick="@SubmitForm">Submit</MatButton>
 
 @code {
     [CascadingParameter]
     Form form { get; set; }
+    [CascadingParameter]
+    TreeNodeModel item { get; set; }
+
+    public void SubmitForm(MouseEventArgs e) {
+        item.SubmitSmartContractFunction();
+    }
 }

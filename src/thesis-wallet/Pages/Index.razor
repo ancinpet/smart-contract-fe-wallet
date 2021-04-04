@@ -9,11 +9,13 @@
 @using System.Text.Json;
 @using System.Text.Json.Serialization;
 @using Nethereum.Web3
+@using Newtonsoft.Json
 @using Newtonsoft.Json.Linq
 @using System.Text
 @using System.Xml.Serialization
 @using System.Xml
 @using System.Collections
+@using System.Threading
 
 
 @if (EthereumAvailable == true && !string.IsNullOrEmpty(menu.SelectedAccount)) {
@@ -71,7 +73,7 @@
             </div>
             <div class="mat-layout-grid-cell mat-layout-grid-cell-span-9">
                 @if (menu != null && menu.SelectedNode != null && menu.SelectedNode.Form != null) {
-                    <CascadingValue Value="@menu.SelectedNode.DasContractItem">
+                    <CascadingValue Value="@menu.SelectedNode">
                         <CascadingValue Value="@menu.SelectedNode.Form">
                             <DForm @ref="menu.dForm"></DForm>
                         </CascadingValue>
@@ -125,57 +127,77 @@
             object[] paramser = new object[1]{ 3 };
             var transactionHash = await adoptapet.SendTransactionAsync(menu.SelectedAccount, new HexBigInteger(63721), null, paramser);
             Console.WriteLine(transactionHash);
-            
-            
-            
-            
-            /*Function adopters = contract.GetFunction("getAdopters");
-            List<Nethereum.ABI.FunctionEncoding.ParameterOutput> result = await adopters.CallDecodingToDefaultAsync();
-            foreach (Nethereum.ABI.FunctionEncoding.ParameterOutput x in result) {
-                Console.WriteLine(x.DataIndexStart);
-                Console.WriteLine(x.Parameter.ABIType);
-                Console.WriteLine(x.Parameter.DecodedType);
-                Console.WriteLine(x.Parameter.Indexed);
-                Console.WriteLine(x.Parameter.InternalType);
-                Console.WriteLine(x.Parameter.Name);
-                Console.WriteLine(x.Parameter.Order);
-                Console.WriteLine(x.Parameter.Type);
-                Console.WriteLine("xxxxxxxxxx");
-                foreach (var z in (List<object>)x.Result) {
-                    Console.WriteLine(z);                
-                }
-            }*/
         } catch (Exception ex) {
             ErrorTransferMessage = ex.Message;
         }
     }
 
-
-
-
-
-
-
-
-
-
-
     /* MENU */
-    class TreeNodeModel {
-        public TreeNodeModel(string name, DasContractItem contract = null, Form form = null) {
-            Name = name;
-            DasContractItem = contract;
-            Form = form;
-        }
-
+    public class TreeNodeModel {
+        private DasContractMenu Menu { get; set; }
         public string Name { get; set; }
         public DasContractItem DasContractItem { get; set; }
         public Form Form { get; set; }
         public List<TreeNodeModel> Nodes { get; set; } = new List<TreeNodeModel>();
         public bool IsExpanded { get; set; } = true;
+        public string MyETHAddress { get; set; }
+        public Web3 w3 { get; set; }
+
+        public TreeNodeModel(string name, string address = null, Web3 w = null, DasContractMenu menu = null, DasContractItem contract = null, Form form = null) {
+            Menu = menu;
+            w3 = w;
+            Name = name;
+            DasContractItem = contract;
+            Form = form;
+        }
+
+        public async void SubmitSmartContractFunction() {
+            Contract contract = w3.Eth.GetContract(DasContractItem.DasContract.ABI, DasContractItem.ContractAddress);
+            JArray callableFunctions = JArray.Parse(DasContractItem.DasContract.ABI);
+            JObject desiredFunc = null;
+            foreach (JObject callableFunction in callableFunctions) {
+                if (callableFunction["name"]?.ToString() == Form.FuncBind) {
+                    desiredFunc = callableFunction;
+                }
+            }
+            if (desiredFunc == null) {
+                Console.WriteLine($"Unable to submit form {Form.Label} because the function {Form.FuncBind} does not exist in the smart contract.");
+                return;
+            }
+            List<object> inputs = new List<object>();
+            foreach (var input in ((JArray)desiredFunc["inputs"])) {
+                string toSearchFor = input["name"].ToString();
+                bool found = false;
+                foreach (FieldGroup fieldGroup in Form.FieldGroups) {
+                    foreach (Field field in fieldGroup.Fields) {
+                        if (field.ParamBind == toSearchFor) {
+                            inputs.Add(field.GetData());
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) {
+                        break;
+                    }
+                }
+                if (!found) {
+                    Console.WriteLine($"Unable to submit form {Form.Label} because the parameter {toSearchFor} was not provided for the function {Form.FuncBind}.");
+                    return;
+                }
+            }
+            Function contractTransaction = contract.GetFunction(Form.FuncBind);
+            object[] paramsToCall = Menu.ParametersToObjectField(inputs);
+            string transactionHash = await contractTransaction.SendTransactionAsync(MyETHAddress, paramsToCall);
+            var receipt = await w3.Eth.Transactions.GetTransactionReceipt.SendRequestAsync(transactionHash);
+            while (receipt == null){
+                Thread.Sleep(1000);
+                receipt = await w3.Eth.Transactions.GetTransactionReceipt.SendRequestAsync(transactionHash);
+            }
+            Menu.LoadFormData(Menu.SelectedNode);
+        }
     }
 
-    class DasContractItem {        
+    public class DasContractItem {        
         public string ContractAddress { get; set; }
         public DContract DasContract { get; set; }
 
@@ -216,7 +238,7 @@
         }
     }
 
-    class DasContractMenu {
+    public class DasContractMenu {
         public DForm dForm { get; set; }
         public Web3 w3 { get; set; }
         public List<TreeNodeModel> ViewRoots { get; set; } = new List<TreeNodeModel>();
@@ -261,10 +283,13 @@
                                 field.SetData(remainder);
                             }
                         } else {
-                            var contract = w3.Eth.GetContract(item.DasContractItem.DasContract.ABI, item.DasContractItem.ContractAddress);
+                            Contract contract = w3.Eth.GetContract(item.DasContractItem.DasContract.ABI, item.DasContractItem.ContractAddress);
                             ViewToken tokenized = TokenizeCall(field.ViewBind);
                             Function dataView = contract.GetFunction(tokenized.FuncName);
-                            object[] paramsToCall = tokenized.Parameters.Cast<object>().ToArray();
+                            
+                            List<object> inputs = new List<object>();
+                            inputs.AddRange(tokenized.Parameters);
+                            object[] paramsToCall = ParametersToObjectField(inputs);
                             List<ParameterOutput> retValues = await dataView.CallDecodingToDefaultAsync(paramsToCall);
 
                             List<string> output = OutputFromResult(retValues, tokenized, field);
@@ -327,6 +352,17 @@
                     } else {
                         Console.WriteLine($"Ignoring field {field.Label}. Index out of bounds for parameter order from {field.ViewBind}!");
                     }   
+                } else {
+                    foreach (ParameterOutput singleReturn in outputsToProcess) { 
+                        if (IsIterable(singleReturn.Parameter.DecodedType)) {
+                            List<object> resArray = (List<object>)singleReturn.Result;
+                            foreach (object res in resArray) {
+                                output.Add(res.ToString());
+                            }
+                        } else {
+                            output.Add(singleReturn.Result.ToString());
+                        }
+                    }
                 }
             }
 
@@ -384,6 +420,26 @@
             return token;
         }
 
+        public object[] ParametersToObjectField(List<object> parameters) {
+            for (int i = 0; i < parameters.Count; ++i) {
+                object res = parameters[i];
+                try {
+                    Int64 serializedRes = Convert.ToInt64(res);
+                    parameters[i] = serializedRes;
+                } catch (Exception e) {
+                    continue;
+                }
+                try {
+                    UInt64 serializedRes = Convert.ToUInt64(res);
+                    parameters[i] = serializedRes;
+                } catch (Exception e) {
+                    continue;
+                }
+            }
+            var result = parameters.Cast<object>().ToArray();
+            return result;
+        }
+
         private bool IsIterable(Type type) {
             return typeof(IEnumerable).IsAssignableFrom(type) && type != typeof(string);
         }
@@ -406,7 +462,7 @@
             TreeNodeModel root = new TreeNodeModel(item.DasContract.Name);
 
             foreach (Form form in item.DasContract.Forms) {
-                root.Nodes.Add(new TreeNodeModel(form.Label, item, form));
+                root.Nodes.Add(new TreeNodeModel(form.Label, SelectedAccount, w3, this, item, form));
             }
             ViewRoots.Add(root);
 

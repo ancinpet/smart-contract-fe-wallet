@@ -61,6 +61,7 @@ namespace thesis_wallet {
 
         public abstract void SetData(string data);
         public abstract void SetDataList(List<string> data);
+        public abstract object GetData();
     }
 
     public class DateField : Field {
@@ -76,6 +77,10 @@ namespace thesis_wallet {
                 Data = DateTime.Parse(data[0]);
             }
         }
+
+        public override object GetData() {
+            return Data;
+        }
     }
 
     public class AddressField : Field {
@@ -88,6 +93,10 @@ namespace thesis_wallet {
 
         public override void SetDataList(List<string> data) {
             Data = string.Join(',', data);
+        }
+
+        public override object GetData() {
+            return Data;
         }
     }
 
@@ -102,6 +111,10 @@ namespace thesis_wallet {
         public override void SetDataList(List<string> data) {
             Data = string.Join(',', data);
         }
+
+        public override object GetData() {
+            return Data;
+        }
     }
 
     public class MultiLineField : Field {
@@ -114,6 +127,10 @@ namespace thesis_wallet {
 
         public override void SetDataList(List<string> data) {
             Data = string.Join(Environment.NewLine, data);
+        }
+
+        public override object GetData() {
+            return Data;
         }
     }
 
@@ -130,6 +147,10 @@ namespace thesis_wallet {
                 Data = Convert.ToInt64(data[0]);
             }
         }
+
+        public override object GetData() {
+            return Data;
+        }
     }
 
     public class DecimalField : Field {
@@ -145,6 +166,10 @@ namespace thesis_wallet {
                 Data = Convert.ToDecimal(data[0]);
             }
         }
+
+        public override object GetData() {
+            return Data;
+        }
     }
 
     public class BoolField : Field {
@@ -159,6 +184,10 @@ namespace thesis_wallet {
             if (data.Count > 0) {
                 Data = Convert.ToBoolean(data[0]);
             }
+        }
+
+        public override object GetData() {
+            return Data;
         }
     }
 
@@ -176,6 +205,10 @@ namespace thesis_wallet {
         public override void SetDataList(List<string> data) {
             Data = data;
         }
+
+        public override object GetData() {
+            return Data;
+        }
     }
 
     public class DropdownField : Field {
@@ -189,6 +222,10 @@ namespace thesis_wallet {
 
         public override void SetDataList(List<string> data) {
             Data = data;
+        }
+
+        public override object GetData() {
+            return Data;
         }
     }
 }
