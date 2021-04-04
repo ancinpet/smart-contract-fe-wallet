@@ -261,7 +261,6 @@
                                 field.SetData(remainder);
                             }
                         } else {
-                            /* 0xCc838408bF5B77b60970b60F4F5c977b1f11F514 */
                             var contract = w3.Eth.GetContract(item.DasContractItem.DasContract.ABI, item.DasContractItem.ContractAddress);
                             ViewToken tokenized = TokenizeCall(field.ViewBind);
                             Function dataView = contract.GetFunction(tokenized.FuncName);
@@ -297,7 +296,7 @@
 
             if (outputsToProcess.Count == 1) {
                 ParameterOutput singleReturn = outputsToProcess[0];
-                if (typeof(IEnumerable).IsAssignableFrom(singleReturn.Parameter.DecodedType)) {
+                if (IsIterable(singleReturn.Parameter.DecodedType)) {
                     List<object> resArray = (List<object>)singleReturn.Result;
                     if (tokenized.Index >= 0) {
                         if (resArray.Count > tokenized.Index) {
@@ -317,7 +316,7 @@
                 if (tokenized.Index >= 0) {
                     if (outputsToProcess.Count > tokenized.Index) {
                         ParameterOutput singleReturn = outputsToProcess[tokenized.Index];
-                        if (typeof(IEnumerable).IsAssignableFrom(singleReturn.Parameter.DecodedType)) {
+                        if (IsIterable(singleReturn.Parameter.DecodedType)) {
                             List<object> resArray = (List<object>)singleReturn.Result;
                             foreach (object res in resArray) {
                                 output.Add(res.ToString());
@@ -383,6 +382,10 @@
             }
 
             return token;
+        }
+
+        private bool IsIterable(Type type) {
+            return typeof(IEnumerable).IsAssignableFrom(type) && type != typeof(string);
         }
     
         public void LoadDashboard() {
