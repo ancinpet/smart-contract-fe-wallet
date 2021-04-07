@@ -189,9 +189,13 @@
             object[] paramsToCall = Menu.ParametersToObjectField(inputs);
             string transactionHash = await contractTransaction.SendTransactionAsync(MyETHAddress, paramsToCall);
             var receipt = await w3.Eth.Transactions.GetTransactionReceipt.SendRequestAsync(transactionHash);
+            int maxAttempts = 0;
             while (receipt == null){
                 Thread.Sleep(1000);
                 receipt = await w3.Eth.Transactions.GetTransactionReceipt.SendRequestAsync(transactionHash);
+                if (maxAttempts++ > 30) {
+                    break;
+                }
             }
             Menu.LoadFormData(Menu.SelectedNode);
         }

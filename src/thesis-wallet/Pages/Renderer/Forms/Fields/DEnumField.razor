@@ -3,16 +3,17 @@
 @if (!String.IsNullOrEmpty(field.Label)) {
     <span>@field.Label</span><br>
 }
-<MatRadioGroup Items="@field.Data" Outlined="true" Style="min-width: 100%">    
-    <ItemTemplate>
+<MatRadioGroup @bind-Value="@field.Data" TValue="int" Outlined="true" Style="min-width: 100%">
+    @for (int i = 0; i < field.Options.Count; ++i) {
+        int index = i;        
         @if (field.Vertical) {
             <div>
-                <MatRadioButton Disabled="@field.ReadOnly" Value="@context">@context</MatRadioButton>
+                <MatRadioButton Disabled="@field.ReadOnly" Value="index" TValue="int">@field.Options[index]</MatRadioButton>
             </div>
         } else {
-            <MatRadioButton Disabled="@field.ReadOnly" Value="@context">@context</MatRadioButton>
+            <MatRadioButton Disabled="@field.ReadOnly" Value="index" TValue="int">@field.Options[index]</MatRadioButton>
         }
-    </ItemTemplate>
+    }
 </MatRadioGroup>
 @if (!String.IsNullOrEmpty(field.Description)) {
     <MatTooltip Tooltip="@field.Description">

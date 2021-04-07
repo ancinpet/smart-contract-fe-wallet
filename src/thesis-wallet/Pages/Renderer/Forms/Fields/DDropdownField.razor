@@ -2,17 +2,24 @@
 
 
 @if (!String.IsNullOrEmpty(field.Description)) {
-    <MatSelectItem Items="@field.Data" Disabled="@field.ReadOnly" Outlined="true" Style="min-width: 90%"></MatSelectItem>
+    <MatSelect Label="@field.Label" @bind-Value="@field.Data" Outlined="true" Style="min-width: 90%">
+        @for (int i = 0; i < field.Options.Count; ++i) {
+            int index = i;
+            <MatOption Disabled="@field.ReadOnly" TValue="int" Value="index">@field.Options[index]</MatOption>
+        }
+    </MatSelect>
     <MatTooltip Tooltip="@field.Description">
         <div @ref="context.Current" style="display:inline-block;">
             <MatIcon Style="font-size:2.2em;vertical-align:middle;">help_outline</MatIcon>
         </div>
     </MatTooltip>
 } else {
-    <MatSelectItem Items="@field.Data" Disabled="@field.ReadOnly" Outlined="true" Style="min-width: 100%"></MatSelectItem>
-}
-@if (!String.IsNullOrEmpty(field.Label)) {
-    <span>@field.Label</span><br>
+    <MatSelect Label="@field.Label" @bind-Value="@field.Data" Outlined="true" Style="min-width: 100%">
+        @for (int i = 0; i < field.Options.Count; ++i) {
+            int index = i;
+            <MatOption Disabled="@field.ReadOnly" TValue="int" Value="index">@field.Options[index]</MatOption>
+        }
+    </MatSelect>
 }
 
 @code {

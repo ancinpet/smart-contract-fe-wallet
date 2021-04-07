@@ -20,7 +20,7 @@ namespace thesis_wallet {
     public class Form {
         [XmlAttribute("Label")]
         public string Label { get; set; } = "";
-        [XmlElement("FuncBind")]
+        [XmlAttribute("FuncBind")]
         public string FuncBind { get; set; } = "";
 
         [XmlElement("FieldGroup")]
@@ -48,9 +48,9 @@ namespace thesis_wallet {
     }
 
     public abstract class Field {
-        [XmlElement("ParamBind")]
+        [XmlAttribute("ParamBind")]
         public string ParamBind { get; set; } = "";
-        [XmlElement("ViewBind")]
+        [XmlAttribute("ViewBind")]
         public string ViewBind { get; set; } = "";
         [XmlAttribute("Label")]
         public string Label { get; set; }
@@ -194,38 +194,71 @@ namespace thesis_wallet {
     public class EnumField : Field {
         [XmlAttribute("Vertical")]
         public bool Vertical { get; set; } = false;
+
         [XmlIgnoreAttribute]
-        public List<string> Data { get; set; } = new List<string> { "A", "B", "C"};
+        public int Data { get; set; } = -1;
+        [XmlElement("Option")]
+        public List<string> Options { get; set; } = new List<string>();
+        [XmlAttribute("Indexed")]
+        public bool Indexed { get; set; } = false;
 
         public override void SetData(string data) {
-            Data = new List<string>();
-            Data.Add(data);
+            for (int i = 0; i < Options.Count; ++i) {
+                if (Options[i] == data) {
+                    Data = i;
+                    return;
+                }
+            }
         }
 
         public override void SetDataList(List<string> data) {
-            Data = data;
+            Options = data;
+            if (Data == 0 && Options.Count > 1) {
+                Data = 1;
+            }
+            Data = 0;
         }
 
         public override object GetData() {
-            return Data;
+            if (Indexed) {
+                return Data;
+            } else {
+                return Options[Data];
+            }
         }
     }
 
     public class DropdownField : Field {
         [XmlIgnoreAttribute]
-        public List<string> Data { get; set; } = new List<string> { "A", "B", "C" };
+        public int Data { get; set; } = -1;
+        [XmlElement("Option")]
+        public List<string> Options { get; set; } = new List<string>();
+        [XmlAttribute("Indexed")]
+        public bool Indexed { get; set; } = false;
 
         public override void SetData(string data) {
-            Data = new List<string>();
-            Data.Add(data);
+            for (int i = 0; i < Options.Count; ++i) {
+                if (Options[i] == data) {
+                    Data = i;
+                    return;
+                }
+            }
         }
 
         public override void SetDataList(List<string> data) {
-            Data = data;
+            Options = data;
+            if (Data == 0 && Options.Count > 1) {
+                Data = 1;
+            }
+            Data = 0;
         }
 
         public override object GetData() {
-            return Data;
+            if (Indexed) {
+                return Data;
+            } else {
+                return Options[Data];
+            }
         }
     }
 }
