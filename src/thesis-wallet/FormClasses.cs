@@ -230,7 +230,7 @@ namespace thesis_wallet {
 
     public class DropdownField : Field {
         [XmlIgnoreAttribute]
-        public int Data { get; set; } = -1;
+        public int? Data { get; set; } = null;
         [XmlElement("Option")]
         public List<string> Options { get; set; } = new List<string>();
         [XmlAttribute("Indexed")]
@@ -247,17 +247,14 @@ namespace thesis_wallet {
 
         public override void SetDataList(List<string> data) {
             Options = data;
-            if (Data == 0 && Options.Count > 1) {
-                Data = 1;
-            }
-            Data = 0;
+            Data = null;
         }
 
         public override object GetData() {
-            if (Indexed) {
+            if (Indexed || Data == null) {
                 return Data;
             } else {
-                return Options[Data];
+                return Options[(int)Data];
             }
         }
     }

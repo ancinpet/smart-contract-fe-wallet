@@ -32,6 +32,21 @@
             <MatButton OnClick="@menu.SubmitExistingContractDialog">Add</MatButton>
         </MatDialogActions>
     </MatDialog>
+    <MatDialog @bind-IsOpen="@menu.newDialogIsOpen">
+        <MatDialogTitle>Create new contract</MatDialogTitle>
+        <MatDialogContent>
+            <p>Das Contract bytecode</p>
+            <MatTextField Outlined="true" @bind-Value="@menu.dasContractByteCode" style="width:30em;"></MatTextField>
+            <p>Das Contract constructor parameters</p>
+            <MatTextField Outlined="true" @bind-Value="@menu.dasContractConstructorParams" style="width:30em;"></MatTextField>
+            <p>Das Contract Form file (xml)</p>
+            <InputFile OnChange="menu.LoadFilesDialog" accept=".xml" />
+        </MatDialogContent>
+        <MatDialogActions>
+            <MatButton OnClick="@menu.CancelNewContractDialog">Cancel</MatButton>
+            <MatButton OnClick="@menu.SubmitNewContractDialog">Add</MatButton>
+        </MatDialogActions>
+    </MatDialog>
     <div class="mat-layout-grid">
         <div class="mat-layout-grid-inner">
             <div class="mat-layout-grid-cell mat-layout-grid-cell-span-3">
@@ -46,10 +61,10 @@
                     </div>
                     <div class="mat-layout-grid-cell mat-layout-grid-cell-span-4">
                         <div style="display:flex;justify-content:center;">
-                            <MatFAB Icon="@MatIconNames.Note_add" Raised="true"></MatFAB>
+                            <MatFAB Icon="@MatIconNames.Note_add" Raised="true" OnClick="@menu.OpenNewContractDialog"></MatFAB>
                         </div>
                         <div style="display:flex;justify-content:center;">
-                            <MatButtonLink Href="" Style="font-size:0.8em">New contract</MatButtonLink>
+                            <MatButtonLink Href="" Style="font-size:0.8em" OnClick="@menu.OpenNewContractDialog">New contract</MatButtonLink>
                         </div>
                     </div>
                     <div class="mat-layout-grid-cell mat-layout-grid-cell-span-4">
@@ -75,7 +90,7 @@
                 @if (menu != null && menu.SelectedNode != null && menu.SelectedNode.Form != null) {
                     <CascadingValue Value="@menu.SelectedNode">
                         <CascadingValue Value="@menu.SelectedNode.Form">
-                            <DForm @ref="menu.dForm"></DForm>
+                            <DForm></DForm>
                         </CascadingValue>
                     </CascadingValue>
             } else {
@@ -92,12 +107,9 @@
 @code{
     DasContractMenu menu = new DasContractMenu();
     bool EthereumAvailable { get; set; }
-    string BlockHash { get; set; }
-    string TransactionHash { get; set; }
-    string ErrorTransferMessage { get; set; }
-    protected string AuthenticatedAccount { get; set; }
 
     protected override async Task OnInitializedAsync() {
+        menu.Component = this;
         _ethereumHostProvider.SelectedAccountChanged += AccountChanged;
         EthereumAvailable = await _ethereumHostProvider.CheckProviderAvailabilityAsync();
         menu.w3 = await _ethereumHostProvider.GetWeb3Async();
@@ -107,29 +119,6 @@
         menu.SelectedAccount = account;
         menu.LoadFormData(menu.SelectedNode);
         await this.InvokeAsync(StateHasChanged);
-    }
-
-    protected async Task GetBlockHashAsync() {
-        var web3 = await _ethereumHostProvider.GetWeb3Async();
-        var block = await web3.Eth.Blocks.GetBlockWithTransactionsByNumber.SendRequestAsync(new HexBigInteger(1));
-        BlockHash = block.BlockHash;
-    }
-
-    protected async Task TransferEtherAsync() {
-        try {
-            string smartContractAddress = "0xCc838408bF5B77b60970b60F4F5c977b1f11F514";
-            string abiStandardToken = @"[{""constant"":true,""inputs"":[{""internalType"":""uint256"",""name"":"""",""type"":""uint256""}],""name"":""adopters"",""outputs"":[{""internalType"":""address"",""name"":"""",""type"":""address""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""constant"":false,""inputs"":[{""internalType"":""uint256"",""name"":""petId"",""type"":""uint256""}],""name"":""adopt"",""outputs"":[{""internalType"":""uint256"",""name"":"""",""type"":""uint256""}],""payable"":false,""stateMutability"":""nonpayable"",""type"":""function""},{""constant"":true,""inputs"":[],""name"":""getAdopters"",""outputs"":[{""internalType"":""address[16]"",""name"":"""",""type"":""address[16]""}],""payable"":false,""stateMutability"":""view"",""type"":""function""}]";
-            var web3 = await _ethereumHostProvider.GetWeb3Async();
-            var contract = web3.Eth.GetContract(abiStandardToken, smartContractAddress);
-            var contractHandler = web3.Eth.GetContractHandler(smartContractAddress);
-            Console.WriteLine(contractHandler.EthApiContractService.GetCode.ToString());
-            Function adoptapet = contract.GetFunction("adopt");
-            object[] paramser = new object[1]{ 3 };
-            var transactionHash = await adoptapet.SendTransactionAsync(menu.SelectedAccount, new HexBigInteger(63721), null, paramser);
-            Console.WriteLine(transactionHash);
-        } catch (Exception ex) {
-            ErrorTransferMessage = ex.Message;
-        }
     }
 
     /* MENU */
@@ -187,7 +176,9 @@
             }
             Function contractTransaction = contract.GetFunction(Form.FuncBind);
             object[] paramsToCall = Menu.ParametersToObjectField(inputs);
-            string transactionHash = await contractTransaction.SendTransactionAsync(MyETHAddress, paramsToCall);
+
+            var gas = await contractTransaction.EstimateGasAsync(paramsToCall);
+            string transactionHash = await contractTransaction.SendTransactionAsync(MyETHAddress, gas, null, paramsToCall);
             var receipt = await w3.Eth.Transactions.GetTransactionReceipt.SendRequestAsync(transactionHash);
             int maxAttempts = 0;
             while (receipt == null){
@@ -205,7 +196,7 @@
         public string ContractAddress { get; set; }
         public DContract DasContract { get; set; }
 
-        public DasContractItem(string contractForm, string other, bool deploy) {
+        public DasContractItem(string contractForm, string address) {
             using (TextReader reader = new StringReader(contractForm)) {
                 XmlSerializer serializer = create_throwing_serializer();
                 XmlReader xmlreader = new XmlTextReader(reader);
@@ -216,11 +207,7 @@
                     return;
                 }
             }
-            if (deploy) {                
-                ContractAddress = "";
-            } else {
-                ContractAddress = other;                
-            }
+            ContractAddress = address;
         }
         
         private void Serializer_Throw(object sender, XmlElementEventArgs e) {
@@ -243,7 +230,7 @@
     }
 
     public class DasContractMenu {
-        public DForm dForm { get; set; }
+        public Index Component { get; set; }
         public Web3 w3 { get; set; }
         public List<TreeNodeModel> ViewRoots { get; set; } = new List<TreeNodeModel>();
         private TreeNodeModel selectedNode;
@@ -263,7 +250,8 @@
         public List<DasContractItem> availableContracts = new List<DasContractItem>();
         public bool existingDialogIsOpen = false;
         public bool newDialogIsOpen = false;
-        public string dasContractBytecode = "";
+        public string dasContractConstructorParams = "";
+        public string dasContractByteCode = "";
         public string dasContractAddress = "";
         public string dasFormFile = "";
         public string SelectedAccount = "";
@@ -295,18 +283,18 @@
                             inputs.AddRange(tokenized.Parameters);
                             object[] paramsToCall = ParametersToObjectField(inputs);
                             List<ParameterOutput> retValues = await dataView.CallDecodingToDefaultAsync(paramsToCall);
-
                             List<string> output = OutputFromResult(retValues, tokenized, field);
                             if (output.Count == 1) {
                                 field.SetData(output[0]);
                             } else {
                                 field.SetDataList(output);
+                                Component.StateHasChanged();
                             }
                         }
                     }
                 }
             }
-            dForm.refresh();
+            Component.StateHasChanged();
         }
 
         private List<string> OutputFromResult(List<ParameterOutput> retValues, ViewToken tokenized, Field field) {
@@ -456,12 +444,48 @@
             return model.IsExpanded;
         }
 
+        public void OpenNewContractDialog() {
+            newDialogIsOpen = true;
+        }
+
         public void OpenExistingContractDialog() {
             existingDialogIsOpen = true;
         }
  
+        public async void SubmitNewContractDialog() {
+            DasContractItem item = new DasContractItem(dasFormFile, "");
+            dasContractConstructorParams = dasContractConstructorParams.Replace(" ", String.Empty);
+            string[] parameters = dasContractConstructorParams.Split(',');
+            List<object> inputs = new List<object>();
+            inputs.AddRange(parameters);
+            object[] paramsToCall = ParametersToObjectField(inputs);
+            if (String.IsNullOrEmpty(dasContractConstructorParams)) {
+                paramsToCall = null;
+            }
+            var estimateGas = await w3.Eth.DeployContract.EstimateGasAsync(item.DasContract.ABI, dasContractByteCode, SelectedAccount, paramsToCall);
+            var receipt = await w3.Eth.DeployContract.SendRequestAndWaitForReceiptAsync(item.DasContract.ABI, dasContractByteCode, SelectedAccount, estimateGas, null, paramsToCall);
+            item.ContractAddress = receipt.ContractAddress;
+            availableContracts.Add(item);            
+            TreeNodeModel root = new TreeNodeModel(item.DasContract.Name);
+            foreach (Form form in item.DasContract.Forms) {
+                root.Nodes.Add(new TreeNodeModel(form.Label, SelectedAccount, w3, this, item, form));
+            }
+            ViewRoots.Add(root);          
+            newDialogIsOpen = false;
+            dasContractByteCode = "";
+            dasContractAddress = "";
+            dasContractConstructorParams = "";
+            Component.StateHasChanged();
+        }
+
+        public void CancelNewContractDialog() {
+            newDialogIsOpen = false;
+            dasContractByteCode = "";
+            dasContractAddress = "";
+        }
+ 
         public void SubmitExistingContractDialog() {
-            DasContractItem item = new DasContractItem(dasFormFile, dasContractAddress, false);
+            DasContractItem item = new DasContractItem(dasFormFile, dasContractAddress);
             availableContracts.Add(item);            
             TreeNodeModel root = new TreeNodeModel(item.DasContract.Name);
 
@@ -471,13 +495,13 @@
             ViewRoots.Add(root);
 
             existingDialogIsOpen = false;
-            dasContractBytecode = "";
+            dasContractByteCode = "";
             dasContractAddress = "";
         }
 
         public void CancelExistingContractDialog() {
             existingDialogIsOpen = false;
-            dasContractBytecode = "";
+            dasContractByteCode = "";
             dasContractAddress = "";
         }
 
