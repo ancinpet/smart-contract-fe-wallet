@@ -16,6 +16,7 @@
 @using System.Xml
 @using System.Collections
 @using System.Threading
+@using System.Numerics
 
 
 @if (EthereumAvailable == true && !string.IsNullOrEmpty(menu.SelectedAccount)) {
@@ -154,31 +155,53 @@
                 return;
             }
             List<object> inputs = new List<object>();
+            string paymentValue = "0";
             foreach (var input in ((JArray)desiredFunc["inputs"])) {
                 string toSearchFor = input["name"].ToString();
-                bool found = false;
+                bool founds = false;
                 foreach (FieldGroup fieldGroup in Form.FieldGroups) {
                     foreach (Field field in fieldGroup.Fields) {
                         if (field.ParamBind == toSearchFor) {
                             inputs.Add(field.GetData());
-                            found = true;
+                            founds = true;
                             break;
                         }
                     }
-                    if (found) {
+                    if (founds) {
                         break;
                     }
                 }
-                if (!found) {
+                if (!founds) {
                     Console.WriteLine($"Unable to submit form {Form.Label} because the parameter {toSearchFor} was not provided for the function {Form.FuncBind}.");
                     return;
                 }
             }
+            bool found = false;
+            foreach (FieldGroup fieldGroup in Form.FieldGroups) {
+                foreach (Field field in fieldGroup.Fields) {
+                    if (field.ParamBind == "fixated:payValue") {
+                        paymentValue = field.GetData().ToString();
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
+                    break;
+                }
+            }
             Function contractTransaction = contract.GetFunction(Form.FuncBind);
             object[] paramsToCall = Menu.ParametersToObjectField(inputs);
-
-            var gas = await contractTransaction.EstimateGasAsync(paramsToCall);
-            string transactionHash = await contractTransaction.SendTransactionAsync(MyETHAddress, gas, null, paramsToCall);
+            if (paramsToCall.Length == 0) {
+                paramsToCall = null;
+            }
+            Console.WriteLine(paymentValue);
+            if (String.IsNullOrEmpty(paymentValue)) {
+                paymentValue = "0";
+            }
+            Console.WriteLine(paymentValue);
+            BigInteger paymentValueInt = BigInteger.Parse(paymentValue);
+            HexBigInteger paymentValueHex = new HexBigInteger(paymentValueInt);
+            string transactionHash = await contractTransaction.SendTransactionAsync(MyETHAddress, new HexBigInteger(BigInteger.Parse("2100000")), paymentValueHex, paramsToCall);
             var receipt = await w3.Eth.Transactions.GetTransactionReceipt.SendRequestAsync(transactionHash);
             int maxAttempts = 0;
             while (receipt == null){
@@ -415,6 +438,9 @@
         public object[] ParametersToObjectField(List<object> parameters) {
             for (int i = 0; i < parameters.Count; ++i) {
                 object res = parameters[i];
+                if (res.ToString().Length > 1 && res.ToString().Substring(0, 2) == "0x") {
+                    continue;
+                }
                 try {
                     Int64 serializedRes = Convert.ToInt64(res);
                     parameters[i] = serializedRes;

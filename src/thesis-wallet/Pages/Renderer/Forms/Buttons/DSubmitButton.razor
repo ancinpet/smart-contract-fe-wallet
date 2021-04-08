@@ -1,7 +1,8 @@
 ﻿@using static thesis_wallet.Pages.Index
 
-
-<MatButton Raised="true" Style="height:3em;font-size:1.3em;" OnClick="@SubmitForm">Submit</MatButton>
+@if (!String.IsNullOrEmpty(form?.FuncBind)) {
+    <MatButton Raised="true" Style="height:3em;font-size:1.3em;" OnClick="@SubmitForm">Submit</MatButton>
+}
 
 @code {
     [CascadingParameter]
