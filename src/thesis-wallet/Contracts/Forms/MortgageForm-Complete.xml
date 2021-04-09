@@ -1,0 +1,152 @@
+<ContractForms Name="Mortgage contract">
+    <ABI>[{"inputs":[{"internalType":"address","name":"propertyTokenAddress","type":"address"}],"stateMutability":"payable","type":"constructor"},{"inputs":[{"internalType":"string","name":"","type":"string"}],"name":"Process_1ActiveStates","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"","type":"string"}],"name":"addressMapping","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"contractValidDate","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"insurance","outputs":[{"internalType":"bool","name":"isEnsured","type":"bool"},{"internalType":"string","name":"additionalInformation","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"isContractCancelable","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"isIndemnityValid","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"lenderAgreed","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"mortgage","outputs":[{"internalType":"uint256","name":"propertyId","type":"uint256"},{"internalType":"uint256","name":"propertyPrice","type":"uint256"},{"internalType":"uint256","name":"rate","type":"uint256"},{"internalType":"uint256","name":"downPaymentValue","type":"uint256"},{"internalType":"uint256","name":"mortgageDurationMonths","type":"uint256"},{"internalType":"uint256","name":"totalPaid","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"mortgageCancellation","outputs":[{"internalType":"string","name":"reason","type":"string"},{"internalType":"bool","name":"confirmation","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"mortgageCompleted","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"mortgageDefaultRequest","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"ownerAgreed","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"propertyToken","outputs":[{"internalType":"contractHouseToken","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"termsViolated","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getPropertyTokenAddress","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getContractBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"state","type":"string"}],"name":"isStateActiveProcess_1","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"role","type":"string"}],"name":"getRoleAddress","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"propertyId","type":"uint256"},{"internalType":"uint256","name":"propertyPrice","type":"uint256"},{"internalType":"uint256","name":"rate","type":"uint256"},{"internalType":"uint256","name":"mortgageDurationMonths","type":"uint256"}],"name":"ApplyForaMortgagePayable","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"string","name":"notes","type":"string"}],"name":"AcceptInsurance","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"EscrowPropertyRights","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"EscrowMoneyPayable","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"string","name":"reason","type":"string"}],"name":"CancelApplication","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"reason","type":"string"}],"name":"RequestDefault","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"PayMortgageFeePayable","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"bool","name":"validity","type":"bool"}],"name":"CheckIndemnityTerms","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"PayfortheBorrowerPayable","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[],"name":"TransferProportionMoneytotheBorrowerPayable","outputs":[],"stateMutability":"payable","type":"function"}]</ABI>
+    
+    <!-- EVERYONE -->
+    <Form Label="Mortgage details">
+        <FieldGroup Label="My details">
+            <AddressField Label="My ETH Address" ReadOnly="true" ViewBind="const:myAccountAddress" />
+            <AddressField Label="Contract ETH Address" ReadOnly="true" ViewBind="const:myContractAddress" />
+            <SingleLineField Label="Contract balance (Wei)" ReadOnly="true" ViewBind="getContractBalance" />
+        </FieldGroup>
+
+        <FieldGroup Label="Mortgage details (view only)">
+            <IntField Label="Property ID" ReadOnly="true" ViewBind="mortgage.propertyId" />
+            <SingleLineField Label="Property price (Wei)" ReadOnly="true" ViewBind="mortgage.propertyPrice" />
+            <IntField Label="Mortgage rate (%)" ReadOnly="true" ViewBind="mortgage.rate" />
+            <SingleLineField Label="Mortgage downpayment (Wei)" ReadOnly="true" ViewBind="mortgage.downPaymentValue" />
+            <IntField Label="Mortgage duration (months)" ReadOnly="true" ViewBind="mortgage.mortgageDurationMonths" />
+            <SingleLineField Label="Total paid on mortgage (Wei)" ReadOnly="true" ViewBind="mortgage.totalPaid" />
+        </FieldGroup>
+
+        <FieldGroup Label="Insurance details (view only)">
+            <BoolField Label="Insurance active" ReadOnly="true" ViewBind="insurance.isEnsured" />
+            <MultiLineField Label="Additional information" ReadOnly="true" ViewBind="insurance.additionalInformation" />            
+        </FieldGroup>
+
+        <FieldGroup Label="Additional info (view only)">
+            <BoolField Label="Mortgage contract completed" ReadOnly="true" ViewBind="mortgageCompleted" />
+            <BoolField Label="Terms violated" ReadOnly="true" ViewBind="termsViolated" />
+            <BoolField Label="Lender agreed" ReadOnly="true" ViewBind="lenderAgreed" />
+            <BoolField Label="Indemnity valid" ReadOnly="true" ViewBind="isIndemnityValid" />
+            <BoolField Label="Contract cancellation possibility" ReadOnly="true" ViewBind="isContractCancelable" />
+            <BoolField Label="Property owner agreed to contract" ReadOnly="true" ViewBind="ownerAgreed" />                    
+        </FieldGroup>
+    </Form>
+
+    <!-- BORROWER -->
+    <Form Label="Apply for a mortgage" FuncBind="ApplyForaMortgagePayable" StateMachine="isStateActiveProcess_1" Role="Borrower" RoleMachine="getRoleAddress">
+        <FieldGroup Label="My details">
+            <AddressField Label="My ETH Address" ReadOnly="true" ViewBind="const:myAccountAddress" />
+            <AddressField Label="Contract ETH Address" ReadOnly="true" ViewBind="const:myContractAddress" />
+        </FieldGroup>
+
+        <FieldGroup Label="Submit mortgage application">
+            <IntField Label="Property ID" ParamBind="propertyId" />
+            <SingleLineField Label="Property price (Wei)" ParamBind="propertyPrice" />
+            <IntField Label="Mortgage rate (%)" ParamBind="rate" />
+            <IntField Label="Mortgage duration (months)" ParamBind="mortgageDurationMonths" />
+            <SingleLineField Label="Mortgage downpayment (Wei)" ParamBind="const:payValue" />
+        </FieldGroup>
+    </Form>
+
+    <Form Label="Cancel mortgage application" FuncBind="CancelApplication" StateMachine="isStateActiveProcess_1" Role="Borrower" RoleMachine="getRoleAddress">
+        <FieldGroup Label="My details">
+            <AddressField Label="My ETH Address" ReadOnly="true" ViewBind="const:myAccountAddress" />
+            <AddressField Label="Contract ETH Address" ReadOnly="true" ViewBind="const:myContractAddress" />
+        </FieldGroup>
+
+        <FieldGroup Label="Cancellation details">
+            <MultiLineField Label="Cancellation reason" ParamBind="reason" />
+        </FieldGroup>
+    </Form>
+
+    <Form Label="Pay mortgage fee" FuncBind="PayMortgageFeePayable" StateMachine="isStateActiveProcess_1" Role="Borrower" RoleMachine="getRoleAddress">
+        <FieldGroup Label="My details">
+            <AddressField Label="My ETH Address" ReadOnly="true" ViewBind="const:myAccountAddress" />
+            <AddressField Label="Contract ETH Address" ReadOnly="true" ViewBind="const:myContractAddress" />
+        </FieldGroup>
+
+        <FieldGroup Label="Payment">
+            <SingleLineField Label="Amount (Wei)" ParamBind="const:payValue" />
+        </FieldGroup>
+    </Form>
+
+    <!-- LENDER -->
+    <Form Label="Escrow money" FuncBind="EscrowMoneyPayable" StateMachine="isStateActiveProcess_1" Role="Lender" RoleMachine="getRoleAddress">
+        <FieldGroup Label="My details">
+            <AddressField Label="My ETH Address" ReadOnly="true" ViewBind="const:myAccountAddress" />
+            <AddressField Label="Contract ETH Address" ReadOnly="true" ViewBind="const:myContractAddress" />
+        </FieldGroup>
+
+        <FieldGroup Label="Escrow">
+            <SingleLineField Label="Amount (Wei)" ParamBind="const:payValue" />
+        </FieldGroup>
+    </Form>
+
+    <Form Label="Request default" FuncBind="RequestDefault" StateMachine="isStateActiveProcess_1" Role="Lender" RoleMachine="getRoleAddress">
+        <FieldGroup Label="My details">
+            <AddressField Label="My ETH Address" ReadOnly="true" ViewBind="const:myAccountAddress" />
+            <AddressField Label="Contract ETH Address" ReadOnly="true" ViewBind="const:myContractAddress" />
+        </FieldGroup>
+
+        <FieldGroup Label="Request details">
+            <MultiLineField Label="Request reason" ParamBind="reason" />
+        </FieldGroup>
+    </Form>
+
+    <Form Label="Transfer proportion money to the borrower" FuncBind="TransferProportionMoneytotheBorrowerPayable" StateMachine="isStateActiveProcess_1" Role="Lender" RoleMachine="getRoleAddress">
+        <FieldGroup Label="My details">
+            <AddressField Label="My ETH Address" ReadOnly="true" ViewBind="const:myAccountAddress" />
+            <AddressField Label="Contract ETH Address" ReadOnly="true" ViewBind="const:myContractAddress" />
+        </FieldGroup>
+
+        <FieldGroup Label="Transfer details">
+            <SingleLineField Label="Amount (Wei)" ParamBind="const:payValue" />
+        </FieldGroup>
+    </Form>
+
+    <!-- PROPERTY OWNER -->
+    <Form Label="Escrow property rights" FuncBind="EscrowPropertyRights" StateMachine="isStateActiveProcess_1" Role="Property Owner" RoleMachine="getRoleAddress">
+        <FieldGroup Label="My details">
+            <AddressField Label="My ETH Address" ReadOnly="true" ViewBind="const:myAccountAddress" />
+            <AddressField Label="Contract ETH Address" ReadOnly="true" ViewBind="const:myContractAddress" />
+        </FieldGroup>
+
+        <FieldGroup Label="By submitting this transaction, you agree to give the property rights to the borrower.">
+        </FieldGroup>
+    </Form>
+
+    <!-- INSURER -->
+    <Form Label="Accept insurance" FuncBind="AcceptInsurance" StateMachine="isStateActiveProcess_1" Role="Insurer" RoleMachine="getRoleAddress">
+        <FieldGroup Label="My details">
+            <AddressField Label="My ETH Address" ReadOnly="true" ViewBind="const:myAccountAddress" />
+            <AddressField Label="Contract ETH Address" ReadOnly="true" ViewBind="const:myContractAddress" />
+        </FieldGroup>
+
+        <FieldGroup Label="Insurance details">
+            <MultiLineField Label="Insurance notes" ParamBind="notes" />
+        </FieldGroup>
+    </Form>
+
+    <Form Label="Pay for the borrower" FuncBind="PayfortheBorrowerPayable" StateMachine="isStateActiveProcess_1" Role="Insurer" RoleMachine="getRoleAddress">
+        <FieldGroup Label="My details">
+            <AddressField Label="My ETH Address" ReadOnly="true" ViewBind="const:myAccountAddress" />
+            <AddressField Label="Contract ETH Address" ReadOnly="true" ViewBind="const:myContractAddress" />
+        </FieldGroup>
+
+        <FieldGroup Label="Payment details">
+            <SingleLineField Label="Amount (Wei)" ParamBind="const:payValue" />
+        </FieldGroup>
+    </Form>
+
+    <Form Label="Check indemnity terms" FuncBind="CheckIndemnityTerms" StateMachine="isStateActiveProcess_1" Role="Insurer" RoleMachine="getRoleAddress">
+        <FieldGroup Label="My details">
+            <AddressField Label="My ETH Address" ReadOnly="true" ViewBind="const:myAccountAddress" />
+            <AddressField Label="Contract ETH Address" ReadOnly="true" ViewBind="const:myContractAddress" />
+        </FieldGroup>
+
+        <FieldGroup Label="Indemnity terms">
+            <BoolField Label="Terms valid" ParamBind="validity" />
+        </FieldGroup>
+    </Form>
+</ContractForms>

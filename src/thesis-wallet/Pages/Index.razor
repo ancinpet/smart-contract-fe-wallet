@@ -81,7 +81,7 @@
                 <MatDivider></MatDivider>
                 <MatH5 Style="text-align:center;line-height:110%;padding-top:0.2em">Contract list</MatH5>
                 <MatDivider></MatDivider>
-                <MatTreeView TNode="TreeNodeModel" IsNodeExpandedCallback="@menu.ItemIsExpanded" RootNodes="@menu.ViewRoots" GetChildNodesCallback="@((n)=>n.Nodes)" @bind-SelectedNode="@menu.SelectedNode" @bind-SelectedNode:event="SelectedNodeChanged">
+                <MatTreeView TNode="TreeNodeModel" IsNodeExpandedCallback="@menu.ItemIsExpanded" RootNodes="@menu.ViewRootsDisplayed" GetChildNodesCallback="@((n)=>n.Nodes)" @bind-SelectedNode="@menu.SelectedNode" @bind-SelectedNode:event="SelectedNodeChanged">
                     <NodeTemplate>
                         @context.Name
                     </NodeTemplate>
@@ -91,11 +91,11 @@
                 @if (menu != null && menu.SelectedNode != null && menu.SelectedNode.Form != null) {
                     <CascadingValue Value="@menu.SelectedNode">
                         <CascadingValue Value="@menu.SelectedNode.Form">
-                            <DForm></DForm>
+                            <DForm @ref="menu._DForm"></DForm>
                         </CascadingValue>
                     </CascadingValue>
             } else {
-                    <span>Dashboard goes here</span>
+                    <MatH5>Welcome back!</MatH5>
                 }
             </div>
         </div>
@@ -253,8 +253,10 @@
 
     public class DasContractMenu {
         public Index Component { get; set; }
+        public DForm _DForm { get; set; }
         public Web3 w3 { get; set; }
         public List<TreeNodeModel> ViewRoots { get; set; } = new List<TreeNodeModel>();
+        public List<TreeNodeModel> ViewRootsDisplayed { get; set; } = new List<TreeNodeModel>();
         private TreeNodeModel selectedNode;
         public TreeNodeModel SelectedNode {
             get {
@@ -310,13 +312,13 @@
                                 field.SetData(output[0]);
                             } else {
                                 field.SetDataList(output);
-                                Component.StateHasChanged();
                             }
                         }
                     }
                 }
             }
-            Component.StateHasChanged();
+            UpdateMenuView();
+            _DForm.refresh();
         }
 
         private List<string> OutputFromResult(List<ParameterOutput> retValues, ViewToken tokenized, Field field) {
@@ -489,12 +491,13 @@
             foreach (Form form in item.DasContract.Forms) {
                 root.Nodes.Add(new TreeNodeModel(form.Label, SelectedAccount, w3, this, item, form));
             }
-            ViewRoots.Add(root);          
+            ViewRoots.Add(root);
+            UpdateMenuView();
             newDialogIsOpen = false;
             dasContractByteCode = "";
             dasContractAddress = "";
             dasContractConstructorParams = "";
-            Component.StateHasChanged();
+            _DForm.refresh();
         }
 
         public void CancelNewContractDialog() {
@@ -512,10 +515,11 @@
                 root.Nodes.Add(new TreeNodeModel(form.Label, SelectedAccount, w3, this, item, form));
             }
             ViewRoots.Add(root);
-
+            UpdateMenuView();
             existingDialogIsOpen = false;
             dasContractByteCode = "";
             dasContractAddress = "";
+            _DForm.refresh();
         }
 
         public void CancelExistingContractDialog() {
@@ -533,7 +537,68 @@
             } catch (Exception ex) {
                 Console.WriteLine(ex.Message);
             }
-        }   
+        }
+
+        public async void UpdateMenuView() {
+            List<TreeNodeModel> ViewRootsDisplayedTmp = new List<TreeNodeModel>();
+            foreach (TreeNodeModel node in ViewRoots) {
+                TreeNodeModel root = new TreeNodeModel(node.Name);
+                if (await UpdateNodeView(root, node)) {
+                    ViewRootsDisplayedTmp.Add(root);
+                }
+            }
+            ViewRootsDisplayed = ViewRootsDisplayedTmp;
+            Component.StateHasChanged();
+        }
+
+        public async Task<bool> UpdateNodeView(TreeNodeModel root, TreeNodeModel node) {
+            foreach (TreeNodeModel item in node.Nodes) {
+                if ((await StateMachineValid(item)) && (await RoleValid(item))) {
+                    root.Nodes.Add(item);
+                }
+            }
+
+            return root.Nodes.Count > 0;
+        }
+
+        public async Task<bool> StateMachineValid(TreeNodeModel item) {
+            if (String.IsNullOrEmpty(item.Form.FuncBind) || String.IsNullOrEmpty(item.Form.StateMachine)) {
+                return true;
+            }
+
+            try {
+                Contract contract = w3.Eth.GetContract(item.DasContractItem.DasContract.ABI, item.DasContractItem.ContractAddress);
+                Function stateView = contract.GetFunction(item.Form.StateMachine);                            
+                List<object> inputs = new List<object>();
+                inputs.Add(item.Form.FuncBind);
+                object[] paramsToCall = ParametersToObjectField(inputs);
+                List<ParameterOutput> retValues = await stateView.CallDecodingToDefaultAsync(paramsToCall);
+
+                return Convert.ToBoolean(retValues[0].Result.ToString());
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        public async Task<bool> RoleValid(TreeNodeModel item) {
+            if (String.IsNullOrEmpty(item.Form.Role) || String.IsNullOrEmpty(item.Form.RoleMachine)) {
+                return true;
+            }
+
+            try {
+                Contract contract = w3.Eth.GetContract(item.DasContractItem.DasContract.ABI, item.DasContractItem.ContractAddress);
+                Function roleView = contract.GetFunction(item.Form.RoleMachine);                            
+                List<object> inputs = new List<object>();
+                inputs.Add(item.Form.Role);
+                object[] paramsToCall = ParametersToObjectField(inputs);
+                List<ParameterOutput> retValues = await roleView.CallDecodingToDefaultAsync(paramsToCall);
+                string address = retValues[0].Result.ToString();
+
+                return address == "0x0000000000000000000000000000000000000000" || address.ToLower() == SelectedAccount.ToLower();
+            } catch (Exception e) {
+                return false;
+            }
+        }
     }
 
     class ViewToken {
