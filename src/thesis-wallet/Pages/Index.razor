@@ -179,7 +179,7 @@
             bool found = false;
             foreach (FieldGroup fieldGroup in Form.FieldGroups) {
                 foreach (Field field in fieldGroup.Fields) {
-                    if (field.ParamBind == "fixated:payValue") {
+                    if (field.ParamBind == "const:payValue") {
                         paymentValue = field.GetData().ToString();
                         found = true;
                         break;
@@ -194,11 +194,10 @@
             if (paramsToCall.Length == 0) {
                 paramsToCall = null;
             }
-            Console.WriteLine(paymentValue);
             if (String.IsNullOrEmpty(paymentValue)) {
                 paymentValue = "0";
             }
-            Console.WriteLine(paymentValue);
+            //BigInteger paymentValueInt = Web3.Convert.ToWei(BigInteger.Parse(paymentValue));
             BigInteger paymentValueInt = BigInteger.Parse(paymentValue);
             HexBigInteger paymentValueHex = new HexBigInteger(paymentValueInt);
             string transactionHash = await contractTransaction.SendTransactionAsync(MyETHAddress, new HexBigInteger(BigInteger.Parse("2100000")), paymentValueHex, paramsToCall);
@@ -287,7 +286,7 @@
             foreach (FieldGroup fieldGroup in item.Form.FieldGroups) {
                 foreach (Field field in fieldGroup.Fields) {
                     if (!String.IsNullOrEmpty(field.ViewBind)) {
-                        string fixated = "fixated:";
+                        string fixated = "const:";
                         if (field.ViewBind.Substring(0, fixated.Length) == fixated) {
                             string remainder = field.ViewBind.Substring(fixated.Length);
                             if (remainder == "myAccountAddress") {
@@ -442,13 +441,7 @@
                     continue;
                 }
                 try {
-                    Int64 serializedRes = Convert.ToInt64(res);
-                    parameters[i] = serializedRes;
-                } catch (Exception e) {
-                    continue;
-                }
-                try {
-                    UInt64 serializedRes = Convert.ToUInt64(res);
+                    BigInteger serializedRes = BigInteger.Parse(res.ToString());
                     parameters[i] = serializedRes;
                 } catch (Exception e) {
                     continue;
