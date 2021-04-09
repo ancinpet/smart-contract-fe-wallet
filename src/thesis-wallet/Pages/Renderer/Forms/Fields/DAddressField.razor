@@ -1,7 +1,7 @@
 ﻿
 
 @if (!String.IsNullOrEmpty(field.Description)) {
-    <MatTextField @bind-Value="field.Data" Label="@field.Label" ReadOnly="@field.ReadOnly" Outlined="true" Style="min-width: 90%"></MatTextField>
+    <MatTextField @bind-Value="field.Data" Label="@field.Label" ReadOnly="@field.ReadOnly" Outlined="true" Style="min-width: calc(100% - 3em)"></MatTextField>
     <MatTooltip Tooltip="@field.Description">
         <div @ref="context.Current" style="display:inline-block;">
             <MatIcon Style="font-size:2.2em;vertical-align:middle;">help_outline</MatIcon>

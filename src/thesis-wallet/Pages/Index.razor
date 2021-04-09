@@ -318,7 +318,7 @@
                 }
             }
             UpdateMenuView();
-            _DForm.refresh();
+            _DForm?.refresh();
         }
 
         private List<string> OutputFromResult(List<ParameterOutput> retValues, ViewToken tokenized, Field field) {
@@ -497,7 +497,6 @@
             dasContractByteCode = "";
             dasContractAddress = "";
             dasContractConstructorParams = "";
-            _DForm.refresh();
         }
 
         public void CancelNewContractDialog() {
@@ -519,7 +518,6 @@
             existingDialogIsOpen = false;
             dasContractByteCode = "";
             dasContractAddress = "";
-            _DForm.refresh();
         }
 
         public void CancelExistingContractDialog() {
