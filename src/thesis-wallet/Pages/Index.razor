@@ -11,6 +11,7 @@
 @using System.Text.Json;
 @using System.Text.Json.Serialization;
 @using Nethereum.RPC.Eth.DTOs
+@using Nethereum.Util
 @using Nethereum.Web3
 @using Newtonsoft.Json
 @using Newtonsoft.Json.Linq
@@ -20,6 +21,7 @@
 @using System.Collections
 @using System.Threading
 @using System.Numerics
+@using System.Text.RegularExpressions
 
 
 @if (EthereumAvailable == true && !string.IsNullOrEmpty(menu.SelectedAccount)) {
@@ -257,7 +259,7 @@
                     Console.WriteLine("Contract XML Parse Error");
                     Console.WriteLine(e.Message);
                     Console.WriteLine(e.StackTrace);
-                    return;
+                    throw;
                 }
             }
             ContractAddress = address;
@@ -518,7 +520,12 @@
         }
  
         public async void SubmitNewContractDialog() {
-            DasContractItem item = new DasContractItem(dasFormFile, "", this);
+            DasContractItem item = null;
+            try {                
+                item = new DasContractItem(dasFormFile, "", this);
+            } catch (Exception) {
+                return;
+            }
             dasContractConstructorParams = dasContractConstructorParams.Replace(" ", String.Empty);
             string[] parameters = dasContractConstructorParams.Split(',');
             List<object> inputs = new List<object>();
@@ -551,6 +558,11 @@
         }
  
         public void SubmitExistingContractDialog() {
+            if (!IsValidAddress(dasContractAddress)) {
+                Component.Toaster.Add($"The address {dasContractAddress} is not a valid Ethereum address.", MatToastType.Danger, "Cannot add this contract");
+                return;
+            }
+
             if (Component.localStorage.ContainKey(dasContractAddress)) {
                 existingDialogIsOpen = false;
                 dasContractByteCode = "";
@@ -558,7 +570,12 @@
                 Component.Toaster.Add($"Contract for the address {dasContractAddress} already exists.", MatToastType.Danger, "Cannot add this contract");
                 return;
             }
-            DasContractItem item = new DasContractItem(dasFormFile, dasContractAddress, this);
+            DasContractItem item = null;
+            try {                
+                item = new DasContractItem(dasFormFile, dasContractAddress, this);
+            } catch (Exception) {
+                return;
+            }
             SaveContractToStorage(dasContractAddress, dasFormFile);
             LoadDasContract(item, dasContractAddress);
             existingDialogIsOpen = false;
@@ -576,7 +593,13 @@
             for (int i = 0; i < Component.localStorage.Length(); ++i) {
                 string address = Component.localStorage.Key(i);
                 string formFile = Component.localStorage.GetItemAsString(address);
-                DasContractItem item = new DasContractItem(formFile, address, this);
+                DasContractItem item = null;
+                try {
+                    Console.WriteLine(address);
+                    item = new DasContractItem(formFile, address, this);
+                } catch (Exception) {
+                    continue;
+                }
                 LoadDasContract(item, address);
             }
             Component.StateHasChanged();
@@ -673,6 +696,18 @@
                 return address == "0x0000000000000000000000000000000000000000" || address.ToLower() == SelectedAccount.ToLower();
             } catch (Exception) {
                 return false;
+            }
+        }
+
+        public static bool IsValidAddress(string address) {
+            Regex r = new Regex("^(0x){1}[0-9a-fA-F]{40}$");
+
+            if (!r.IsMatch(address)) {
+                return false;
+            } else if (address == address.ToLower()) {
+                return true;
+            } else {
+                return new AddressUtil().IsChecksumAddress(address);
             }
         }
     }

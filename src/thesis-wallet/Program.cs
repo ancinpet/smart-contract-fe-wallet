@@ -31,7 +31,7 @@ namespace thesis_wallet
                 config.NewestOnTop = true;
                 config.ShowCloseButton = true;
                 config.MaximumOpacity = 95;
-                config.VisibleStateDuration = 5000;
+                config.VisibleStateDuration = 10000;
             });
 
             builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
