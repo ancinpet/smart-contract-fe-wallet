@@ -2,12 +2,15 @@
 @inject IJSRuntime jsRuntime;
 @inject IEthereumHostProvider _ethereumHostProvider;
 @inject NethereumAuthenticator  _nethereumAuthenticator;
+@inject Blazored.LocalStorage.ISyncLocalStorageService localStorage
+@inject IMatToaster Toaster
 @using Nethereum.ABI.FunctionEncoding
 @using Nethereum.Contracts
 @using Nethereum.Hex.HexTypes;
 @using System.IO
 @using System.Text.Json;
 @using System.Text.Json.Serialization;
+@using Nethereum.RPC.Eth.DTOs
 @using Nethereum.Web3
 @using Newtonsoft.Json
 @using Newtonsoft.Json.Linq
@@ -82,8 +85,13 @@
                 <MatH5 Style="text-align:center;line-height:110%;padding-top:0.2em">Contract list</MatH5>
                 <MatDivider></MatDivider>
                 <MatTreeView TNode="TreeNodeModel" IsNodeExpandedCallback="@menu.ItemIsExpanded" RootNodes="@menu.ViewRootsDisplayed" GetChildNodesCallback="@((n)=>n.Nodes)" @bind-SelectedNode="@menu.SelectedNode" @bind-SelectedNode:event="SelectedNodeChanged">
-                    <NodeTemplate>
-                        @context.Name
+                    <NodeTemplate>                        
+                        <div style="display:flex;justify-content:space-between;align-items:center;min-width:calc(22.5vw - 1.5em);">
+                            <div>@context.Name</div>
+                            @if (context.DasContractItem == null) {
+                                <div><MatIconButton Icon="delete" OnClick="@(e => @menu.DeleteContract(context.Address))" OnClickStopPropagation="true"></MatIconButton></div>
+                            }
+                        </div>
                     </NodeTemplate>
                 </MatTreeView>
             </div>
@@ -114,6 +122,7 @@
         _ethereumHostProvider.SelectedAccountChanged += AccountChanged;
         EthereumAvailable = await _ethereumHostProvider.CheckProviderAvailabilityAsync();
         menu.w3 = await _ethereumHostProvider.GetWeb3Async();
+        menu.LoadContractsFromStorage();
     }
 
     private async Task AccountChanged(string account) {
@@ -126,15 +135,16 @@
     public class TreeNodeModel {
         private DasContractMenu Menu { get; set; }
         public string Name { get; set; }
+        public string Address { get; set; }
         public DasContractItem DasContractItem { get; set; }
         public Form Form { get; set; }
         public List<TreeNodeModel> Nodes { get; set; } = new List<TreeNodeModel>();
         public bool IsExpanded { get; set; } = true;
-        public string MyETHAddress { get; set; }
         public Web3 w3 { get; set; }
 
-        public TreeNodeModel(string name, string address = null, Web3 w = null, DasContractMenu menu = null, DasContractItem contract = null, Form form = null) {
+        public TreeNodeModel(string name, string address, Web3 w = null, DasContractMenu menu = null, DasContractItem contract = null, Form form = null) {
             Menu = menu;
+            Address = address;
             w3 = w;
             Name = name;
             DasContractItem = contract;
@@ -142,8 +152,15 @@
         }
 
         public async void SubmitSmartContractFunction() {
-            Contract contract = w3.Eth.GetContract(DasContractItem.DasContract.ABI, DasContractItem.ContractAddress);
-            JArray callableFunctions = JArray.Parse(DasContractItem.DasContract.ABI);
+            Contract contract = null;
+            JArray callableFunctions = null;
+            try {
+                contract = w3.Eth.GetContract(DasContractItem.DasContract.ABI, DasContractItem.ContractAddress);
+                callableFunctions = JArray.Parse(DasContractItem.DasContract.ABI);                
+            } catch (Exception) {
+                Menu.Component.Toaster.Add($"Unable to submit form {Form.Label} because the provided Contract address/ABI is not valid.", MatToastType.Danger, "Address/ABI Invalid Error");
+                return;
+            }
             JObject desiredFunc = null;
             foreach (JObject callableFunction in callableFunctions) {
                 if (callableFunction["name"]?.ToString() == Form.FuncBind) {
@@ -151,7 +168,7 @@
                 }
             }
             if (desiredFunc == null) {
-                Console.WriteLine($"Unable to submit form {Form.Label} because the function {Form.FuncBind} does not exist in the smart contract.");
+                Menu.Component.Toaster.Add($"Unable to submit form {Form.Label} because the function {Form.FuncBind} does not exist in the smart contract.", MatToastType.Danger, "Function Missing Error");
                 return;
             }
             List<object> inputs = new List<object>();
@@ -172,7 +189,7 @@
                     }
                 }
                 if (!founds) {
-                    Console.WriteLine($"Unable to submit form {Form.Label} because the parameter {toSearchFor} was not provided for the function {Form.FuncBind}.");
+                    Menu.Component.Toaster.Add($"Unable to submit form {Form.Label} because the parameter {toSearchFor} was not provided for the function {Form.FuncBind}.", MatToastType.Danger, "Parameters Missing Error");
                     return;
                 }
             }
@@ -189,7 +206,6 @@
                     break;
                 }
             }
-            Function contractTransaction = contract.GetFunction(Form.FuncBind);
             object[] paramsToCall = Menu.ParametersToObjectField(inputs);
             if (paramsToCall.Length == 0) {
                 paramsToCall = null;
@@ -197,18 +213,30 @@
             if (String.IsNullOrEmpty(paymentValue)) {
                 paymentValue = "0";
             }
-            //BigInteger paymentValueInt = Web3.Convert.ToWei(BigInteger.Parse(paymentValue));
-            BigInteger paymentValueInt = BigInteger.Parse(paymentValue);
-            HexBigInteger paymentValueHex = new HexBigInteger(paymentValueInt);
-            string transactionHash = await contractTransaction.SendTransactionAsync(MyETHAddress, new HexBigInteger(BigInteger.Parse("2100000")), paymentValueHex, paramsToCall);
-            var receipt = await w3.Eth.Transactions.GetTransactionReceipt.SendRequestAsync(transactionHash);
-            int maxAttempts = 0;
-            while (receipt == null){
-                Thread.Sleep(1000);
-                receipt = await w3.Eth.Transactions.GetTransactionReceipt.SendRequestAsync(transactionHash);
-                if (maxAttempts++ > 30) {
-                    break;
+            HexBigInteger paymentValueHex = null;
+            try {
+                //BigInteger paymentValueInt = Web3.Convert.ToWei(BigInteger.Parse(paymentValue));
+                BigInteger paymentValueInt = BigInteger.Parse(paymentValue);
+                paymentValueHex = new HexBigInteger(paymentValueInt);
+            } catch (Exception) {
+                Menu.Component.Toaster.Add($"Error when trying to parse the transaction currency amount: ({paymentValue}).", MatToastType.Danger, "Smart contract/Blockchain Payment Error");
+                return;
+            }
+            try {
+                Function contractTransaction = contract.GetFunction(Form.FuncBind);
+                string transactionHash = await contractTransaction.SendTransactionAsync(Menu.SelectedAccount, new HexBigInteger(BigInteger.Parse("2100000")), paymentValueHex, paramsToCall);
+                var receipt = await w3.Eth.Transactions.GetTransactionReceipt.SendRequestAsync(transactionHash);
+                int maxAttempts = 0;
+                while (receipt == null){
+                    Thread.Sleep(1000);
+                    receipt = await w3.Eth.Transactions.GetTransactionReceipt.SendRequestAsync(transactionHash);
+                    if (maxAttempts++ > 30) {
+                        break;
+                    }
                 }
+            } catch (Exception) {
+                Menu.Component.Toaster.Add($"Error when sending the transaction {Form.FuncBind} to blockchain.", MatToastType.Danger, "Smart contract/Blockchain Transaction Error");
+                return;
             }
             Menu.LoadFormData(Menu.SelectedNode);
         }
@@ -218,14 +246,17 @@
         public string ContractAddress { get; set; }
         public DContract DasContract { get; set; }
 
-        public DasContractItem(string contractForm, string address) {
+        public DasContractItem(string contractForm, string address, DasContractMenu Menu) {
             using (TextReader reader = new StringReader(contractForm)) {
                 XmlSerializer serializer = create_throwing_serializer();
                 XmlReader xmlreader = new XmlTextReader(reader);
                 try {
                     DasContract = (DContract)serializer.Deserialize(xmlreader);
                 } catch (Exception e) {
-                    Console.WriteLine("Error parsing XML!\n" + $"Error:\n{e.Message}\n{e.StackTrace}");
+                    Menu.Component.Toaster.Add($"Error parsing the provided XML Forms File. Check developer console for more details.", MatToastType.Danger, "Contract XML Parse Error");
+                    Console.WriteLine("Contract XML Parse Error");
+                    Console.WriteLine(e.Message);
+                    Console.WriteLine(e.StackTrace);
                     return;
                 }
             }
@@ -233,13 +264,13 @@
         }
         
         private void Serializer_Throw(object sender, XmlElementEventArgs e) {
-            throw new Exception("XML format exception.");
+            throw new Exception("XML format exception (Unknown element found).");
         }
         private void Serializer_Throw(object sender, XmlAttributeEventArgs e) {
-            throw new Exception("XML format exception.");
+            throw new Exception("XML format exception (Unknown attribute found).");
         }
         private void Serializer_Throw(object sender, XmlNodeEventArgs e) {
-            throw new Exception("XML format exception.");
+            throw new Exception("XML format exception (Unknown node found).");
         }
         
         private XmlSerializer create_throwing_serializer() {
@@ -299,14 +330,27 @@
                                 field.SetData(remainder);
                             }
                         } else {
-                            Contract contract = w3.Eth.GetContract(item.DasContractItem.DasContract.ABI, item.DasContractItem.ContractAddress);
-                            ViewToken tokenized = TokenizeCall(field.ViewBind);
-                            Function dataView = contract.GetFunction(tokenized.FuncName);
+                            ViewToken tokenized = null;
+                            Function dataView = null;
+                            try {
+                                Contract contract = w3.Eth.GetContract(item.DasContractItem.DasContract.ABI, item.DasContractItem.ContractAddress);
+                                tokenized = TokenizeCall(field.ViewBind);
+                                dataView = contract.GetFunction(tokenized.FuncName);
+                            } catch (Exception) {
+                                Component.Toaster.Add($"Unable to load field {field.Label} because the provided Contract address/ABI/Binding is not valid.", MatToastType.Danger, "Address/ABI/Binding Invalid Error");
+                                continue;
+                            }
                             
                             List<object> inputs = new List<object>();
                             inputs.AddRange(tokenized.Parameters);
                             object[] paramsToCall = ParametersToObjectField(inputs);
-                            List<ParameterOutput> retValues = await dataView.CallDecodingToDefaultAsync(paramsToCall);
+                            List<ParameterOutput> retValues = null;
+                            try {
+                                retValues = await dataView.CallDecodingToDefaultAsync(paramsToCall);
+                            } catch (Exception) {
+                                Component.Toaster.Add($"Unable to load field {field.Label} because the blockchain call failed.", MatToastType.Danger, "Smart contract/Blockchain Call Error");
+                                continue;
+                            }
                             List<string> output = OutputFromResult(retValues, tokenized, field);
                             if (output.Count == 1) {
                                 field.SetData(output[0]);
@@ -445,7 +489,7 @@
                 try {
                     BigInteger serializedRes = BigInteger.Parse(res.ToString());
                     parameters[i] = serializedRes;
-                } catch (Exception e) {
+                } catch (Exception) {
                     continue;
                 }
             }
@@ -474,7 +518,7 @@
         }
  
         public async void SubmitNewContractDialog() {
-            DasContractItem item = new DasContractItem(dasFormFile, "");
+            DasContractItem item = new DasContractItem(dasFormFile, "", this);
             dasContractConstructorParams = dasContractConstructorParams.Replace(" ", String.Empty);
             string[] parameters = dasContractConstructorParams.Split(',');
             List<object> inputs = new List<object>();
@@ -483,16 +527,17 @@
             if (String.IsNullOrEmpty(dasContractConstructorParams)) {
                 paramsToCall = null;
             }
-            var estimateGas = await w3.Eth.DeployContract.EstimateGasAsync(item.DasContract.ABI, dasContractByteCode, SelectedAccount, paramsToCall);
-            var receipt = await w3.Eth.DeployContract.SendRequestAndWaitForReceiptAsync(item.DasContract.ABI, dasContractByteCode, SelectedAccount, estimateGas, null, paramsToCall);
-            item.ContractAddress = receipt.ContractAddress;
-            availableContracts.Add(item);            
-            TreeNodeModel root = new TreeNodeModel(item.DasContract.Name);
-            foreach (Form form in item.DasContract.Forms) {
-                root.Nodes.Add(new TreeNodeModel(form.Label, SelectedAccount, w3, this, item, form));
+            TransactionReceipt receipt = null;
+            try {
+                var estimateGas = await w3.Eth.DeployContract.EstimateGasAsync(item.DasContract.ABI, dasContractByteCode, SelectedAccount, paramsToCall);
+                receipt = await w3.Eth.DeployContract.SendRequestAndWaitForReceiptAsync(item.DasContract.ABI, dasContractByteCode, SelectedAccount, estimateGas, null, paramsToCall);
+            } catch (Exception) {
+                Component.Toaster.Add($"Unable to deploy Smart contract because the transaction failed.", MatToastType.Danger, "Smart contract/Blockchain Deploy Error");
+                return;
             }
-            ViewRoots.Add(root);
-            UpdateMenuView();
+            item.ContractAddress = receipt.ContractAddress;
+            SaveContractToStorage(item.ContractAddress, dasFormFile);
+            LoadDasContract(item, item.ContractAddress);
             newDialogIsOpen = false;
             dasContractByteCode = "";
             dasContractAddress = "";
@@ -506,18 +551,50 @@
         }
  
         public void SubmitExistingContractDialog() {
-            DasContractItem item = new DasContractItem(dasFormFile, dasContractAddress);
-            availableContracts.Add(item);            
-            TreeNodeModel root = new TreeNodeModel(item.DasContract.Name);
-
-            foreach (Form form in item.DasContract.Forms) {
-                root.Nodes.Add(new TreeNodeModel(form.Label, SelectedAccount, w3, this, item, form));
+            if (Component.localStorage.ContainKey(dasContractAddress)) {
+                existingDialogIsOpen = false;
+                dasContractByteCode = "";
+                dasContractAddress = "";
+                Component.Toaster.Add($"Contract for the address {dasContractAddress} already exists.", MatToastType.Danger, "Cannot add this contract");
+                return;
             }
-            ViewRoots.Add(root);
-            UpdateMenuView();
+            DasContractItem item = new DasContractItem(dasFormFile, dasContractAddress, this);
+            SaveContractToStorage(dasContractAddress, dasFormFile);
+            LoadDasContract(item, dasContractAddress);
             existingDialogIsOpen = false;
             dasContractByteCode = "";
             dasContractAddress = "";
+        }
+
+        public void SaveContractToStorage(string key, string value) {
+            Component.localStorage.SetItem(key, value);
+        }
+
+        public void LoadContractsFromStorage() {
+            ViewRoots = new List<TreeNodeModel>();
+            ViewRootsDisplayed = new List<TreeNodeModel>();
+            for (int i = 0; i < Component.localStorage.Length(); ++i) {
+                string address = Component.localStorage.Key(i);
+                string formFile = Component.localStorage.GetItemAsString(address);
+                DasContractItem item = new DasContractItem(formFile, address, this);
+                LoadDasContract(item, address);
+            }
+            Component.StateHasChanged();
+        }
+
+        public void LoadDasContract(DasContractItem item, string contractAddress) {
+            availableContracts.Add(item);            
+            TreeNodeModel root = new TreeNodeModel(item.DasContract.Name, contractAddress);
+            foreach (Form form in item.DasContract.Forms) {
+                root.Nodes.Add(new TreeNodeModel(form.Label, contractAddress, w3, this, item, form));
+            }
+            ViewRoots.Add(root);
+            UpdateMenuView();
+        }
+
+        public void DeleteContract(string address) {
+            Component.localStorage.RemoveItem(address);
+            LoadContractsFromStorage();
         }
 
         public void CancelExistingContractDialog() {
@@ -533,6 +610,7 @@
                     dasFormFile = await reader.ReadToEndAsync();
                 }
             } catch (Exception ex) {
+                Component.Toaster.Add($"Unable to read provided XML Forms File.", MatToastType.Danger, "Contract XML Load Error");
                 Console.WriteLine(ex.Message);
             }
         }
@@ -540,7 +618,7 @@
         public async void UpdateMenuView() {
             List<TreeNodeModel> ViewRootsDisplayedTmp = new List<TreeNodeModel>();
             foreach (TreeNodeModel node in ViewRoots) {
-                TreeNodeModel root = new TreeNodeModel(node.Name);
+                TreeNodeModel root = new TreeNodeModel(node.Name, node.Address);
                 if (await UpdateNodeView(root, node)) {
                     ViewRootsDisplayedTmp.Add(root);
                 }
@@ -573,7 +651,7 @@
                 List<ParameterOutput> retValues = await stateView.CallDecodingToDefaultAsync(paramsToCall);
 
                 return Convert.ToBoolean(retValues[0].Result.ToString());
-            } catch (Exception e) {
+            } catch (Exception) {
                 return false;
             }
         }
@@ -593,7 +671,7 @@
                 string address = retValues[0].Result.ToString();
 
                 return address == "0x0000000000000000000000000000000000000000" || address.ToLower() == SelectedAccount.ToLower();
-            } catch (Exception e) {
+            } catch (Exception) {
                 return false;
             }
         }

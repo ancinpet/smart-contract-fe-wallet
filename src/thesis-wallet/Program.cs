@@ -12,6 +12,7 @@ using Nethereum.Metamask.Blazor;
 using Nethereum.Metamask;
 using FluentValidation;
 using MatBlazor;
+using Blazored.LocalStorage;
 
 namespace thesis_wallet
 {
@@ -22,7 +23,17 @@ namespace thesis_wallet
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
             builder.RootComponents.Add<App>("#app");
 
+            builder.Services.AddBlazoredLocalStorage();
             builder.Services.AddMatBlazor();
+            builder.Services.AddMatToaster(config => {
+                config.Position = MatToastPosition.BottomRight;
+                config.PreventDuplicates = false;
+                config.NewestOnTop = true;
+                config.ShowCloseButton = true;
+                config.MaximumOpacity = 95;
+                config.VisibleStateDuration = 5000;
+            });
+
             builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
             builder.Services.AddSingleton<IMetamaskInterop, MetamaskBlazorInterop>();
             builder.Services.AddSingleton<MetamaskInterceptor>();
