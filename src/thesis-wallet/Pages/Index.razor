@@ -22,6 +22,7 @@
 @using System.Threading
 @using System.Numerics
 @using System.Text.RegularExpressions
+@using static Nethereum.Util.UnitConversion
 
 
 @if (EthereumAvailable == true && !string.IsNullOrEmpty(menu.SelectedAccount)) {
@@ -217,13 +218,14 @@
             }
             HexBigInteger paymentValueHex = null;
             try {
-                //BigInteger paymentValueInt = Web3.Convert.ToWei(BigInteger.Parse(paymentValue));
-                BigInteger paymentValueInt = BigInteger.Parse(paymentValue);
+                decimal val = Decimal.Parse(paymentValue);
+                BigInteger paymentValueInt = Web3.Convert.ToWeiFromUnit(val, Web3.Convert.GetEthUnitValue(EthUnit.Ether));
                 paymentValueHex = new HexBigInteger(paymentValueInt);
             } catch (Exception) {
-                Menu.Component.Toaster.Add($"Error when trying to parse the transaction currency amount: ({paymentValue}).", MatToastType.Danger, "Smart contract/Blockchain Payment Error");
+                Menu.Component.Toaster.Add($"Error when trying to parse the transaction currency amount: ({paymentValue}) Ether.", MatToastType.Danger, "Smart contract/Blockchain Payment Error");
                 return;
             }
+            
             try {
                 Function contractTransaction = contract.GetFunction(Form.FuncBind);
                 string transactionHash = await contractTransaction.SendTransactionAsync(Menu.SelectedAccount, new HexBigInteger(BigInteger.Parse("2100000")), paymentValueHex, paramsToCall);
@@ -474,7 +476,7 @@
             if (third.Length == 2) {
                 token.FuncName = third[0];
                 string indexer = third[1].Replace("]", String.Empty);
-                token.Index = Convert.ToInt32(indexer);                
+                token.Index = System.Convert.ToInt32(indexer);                
             } else {
                 token.FuncName = format;
             }
@@ -673,7 +675,7 @@
                 object[] paramsToCall = ParametersToObjectField(inputs);
                 List<ParameterOutput> retValues = await stateView.CallDecodingToDefaultAsync(paramsToCall);
 
-                return Convert.ToBoolean(retValues[0].Result.ToString());
+                return System.Convert.ToBoolean(retValues[0].Result.ToString());
             } catch (Exception) {
                 return false;
             }
