@@ -240,9 +240,14 @@
             }
             HexBigInteger paymentValueHex = null;
             try {
-                decimal val = Decimal.Parse(paymentValue);
-                BigInteger paymentValueInt = Web3.Convert.ToWeiFromUnit(val, Web3.Convert.GetEthUnitValue(EthUnit.Ether));
-                paymentValueHex = new HexBigInteger(paymentValueInt);
+                if (paymentValue.Contains(".")) {
+                    decimal val = Decimal.Parse(paymentValue);
+                    BigInteger paymentValueInt = Web3.Convert.ToWeiFromUnit(val, Web3.Convert.GetEthUnitValue(EthUnit.Ether));
+                    paymentValueHex = new HexBigInteger(paymentValueInt);
+                } else {
+                    BigInteger paymentValueInt = BigInteger.Parse(paymentValue);
+                    paymentValueHex = new HexBigInteger(paymentValueInt);
+                }
             } catch (Exception) {
                 Menu.Component.Toaster.Add($"Error when trying to parse the transaction currency amount: ({paymentValue}) Ether.", MatToastType.Danger, "Smart contract/Blockchain Payment Error");
                 return;

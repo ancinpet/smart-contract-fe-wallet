@@ -4,6 +4,9 @@ using System.Collections.Generic;
 using System;
 using System.ComponentModel;
 using System.Linq;
+using System.Numerics;
+using Nethereum.Web3;
+using Nethereum.Hex.HexTypes;
 
 namespace thesis_wallet {
     [XmlRootAttribute("ContractForms")]
@@ -64,6 +67,8 @@ namespace thesis_wallet {
         public string Description { get; set; } = "";
         [XmlAttribute("ReadOnly")]
         public bool ReadOnly { get; set; } = false;
+        [XmlIgnoreAttribute]
+        public bool Currency { get; set; } = false;
 
         public abstract void SetData(string data);
         public abstract void SetDataList(List<string> data);
@@ -107,11 +112,23 @@ namespace thesis_wallet {
     }
 
     public class SingleLineField : Field {
+        [XmlAttribute("Currency")]
+        public new bool Currency { get; set; } = false;
+
         [XmlIgnoreAttribute]
         public string Data { get; set; }
 
         public override void SetData(string data) {
-            Data = data;
+            if (Currency) {
+                try {
+                    BigInteger isPayment = BigInteger.Parse(data);
+                    Data = Web3.Convert.FromWei(isPayment).ToString();
+                } catch (Exception) {
+                    Data = data;
+                }
+            } else {
+                Data = data;
+            }
         }
 
         public override void SetDataList(List<string> data) {
@@ -119,13 +136,22 @@ namespace thesis_wallet {
         }
 
         public override object GetData() {
-            return Data;
+            if (Currency) {
+                try {
+                    decimal val = Decimal.Parse(Data);
+                    return Web3.Convert.ToWeiFromUnit(val, Web3.Convert.GetEthUnitValue(Nethereum.Util.UnitConversion.EthUnit.Ether));
+                } catch (Exception) {
+                    return Data;
+                }
+            } else {
+                return Data;
+            }
         }
     }
 
     public class MultiLineField : Field {
         [XmlIgnoreAttribute]
-        public string Data { get; set; } = Environment.NewLine;
+        public string Data { get; set; }
 
         public override void SetData(string data) {
             Data = data;
@@ -160,11 +186,22 @@ namespace thesis_wallet {
     }
 
     public class DecimalField : Field {
+        [XmlAttribute("Currency")]
+        public new bool Currency { get; set; } = false;
         [XmlIgnoreAttribute]
         public decimal Data { get; set; }
 
         public override void SetData(string data) {
-            Data = Convert.ToDecimal(data);
+            if (Currency) {
+                try {
+                    BigInteger isPayment = BigInteger.Parse(data);
+                    Data = Web3.Convert.FromWei(isPayment);
+                } catch (Exception) {
+                    Data = Convert.ToDecimal(data);
+                }
+            } else {
+                Data = Convert.ToDecimal(data);
+            }
         }
 
         public override void SetDataList(List<string> data) {
@@ -174,7 +211,15 @@ namespace thesis_wallet {
         }
 
         public override object GetData() {
-            return Data;
+            if (Currency) {
+                try {
+                    return Web3.Convert.ToWeiFromUnit(Data, Web3.Convert.GetEthUnitValue(Nethereum.Util.UnitConversion.EthUnit.Ether));
+                } catch (Exception) {
+                    return Data;
+                }
+            } else {
+                return Data;
+            }
         }
     }
 
