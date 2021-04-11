@@ -1,20 +1,25 @@
 ﻿@using static thesis_wallet.Pages.Index
 
-<MatH3>Dashboard</MatH3>
-<MatTable Items="@sortedData" class="mat-elevation-z5" ShowPaging="false" UseSortHeaderRow="true" AllowSelection="true" SelectionChanged="SelectionChangedEvent">
-    <MatTableHeader>
-        <MatSortHeaderRow SortChanged="@SortData">
-            <MatSortHeader SortId="name"><span style="min-width:20em;">Name</span></MatSortHeader>
-            <MatSortHeader SortId="priority">Priority</MatSortHeader>
-            <MatSortHeader SortId="due">Due in</MatSortHeader>
-        </MatSortHeaderRow>
-    </MatTableHeader>
-    <MatTableRow>
-        <td>@context.Name</td>
-        <td>@context.Priority</td>
-        <td>@context.TimeLeft()</td>
-    </MatTableRow>
-</MatTable>
+<MatH4>Dashboard</MatH4>
+@if (Nodes == null || Nodes.Count == 0) {
+    <MatSubtitle1>Welcome!</MatSubtitle1>
+    <MatSubtitle2>You are not managing any contracts at the moment. Please add some using the New Contract or Join Existing buttons.</MatSubtitle2>
+} else {    
+    <MatTable Items="@sortedData" class="mat-elevation-z5" ShowPaging="false" UseSortHeaderRow="true" AllowSelection="true" SelectionChanged="SelectionChangedEvent">
+        <MatTableHeader>
+            <MatSortHeaderRow SortChanged="@SortData">
+                <MatSortHeader SortId="name"><span style="min-width:20em;">Name</span></MatSortHeader>
+                <MatSortHeader SortId="priority">Priority</MatSortHeader>
+                <MatSortHeader SortId="due">Due in</MatSortHeader>
+            </MatSortHeaderRow>
+        </MatTableHeader>
+        <MatTableRow>
+            <td>@context.Name</td>
+            <td>@context.Priority</td>
+            <td>@context.TimeLeft()</td>
+        </MatTableRow>
+    </MatTable>
+}
 
 
 @code {
@@ -88,7 +93,15 @@
                     comparison = (s1, s2) => s1.Priority.CompareTo(s2.Priority);
                     break;
                 case "due":
-                    comparison = (s1, s2) => s1.Due.CompareTo(s2.Due);
+                    comparison = (s1, s2) => {
+                        if (s1.Due.Ticks == 0) {
+                            return 1;
+                        }
+                        if (s2.Due.Ticks == 0) {
+                            return -1;
+                        }
+                        return s1.Due.CompareTo(s2.Due);
+                    };
                     break;
             }
             if (comparison != null) {
