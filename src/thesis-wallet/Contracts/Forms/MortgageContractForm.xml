@@ -6,16 +6,16 @@
         <FieldGroup Label="My details">
             <AddressField Label="My ETH Address" ReadOnly="true" ViewBind="const:myAccountAddress" />
             <AddressField Label="Contract ETH Address" ReadOnly="true" ViewBind="const:myContractAddress" />
-            <SingleLineField Label="Contract balance (Wei)" ReadOnly="true" ViewBind="getContractBalance" />
+            <SingleLineField Label="Contract balance (Ether)" Currency="true" ReadOnly="true" ViewBind="getContractBalance" />
         </FieldGroup>
 
         <FieldGroup Label="Mortgage details (view only)">
             <IntField Label="Property ID" ReadOnly="true" ViewBind="mortgage.propertyId" />
-            <SingleLineField Label="Property price (Wei)" ReadOnly="true" ViewBind="mortgage.propertyPrice" />
+            <SingleLineField Label="Property price (Ether)" Currency="true" ReadOnly="true" ViewBind="mortgage.propertyPrice" />
             <IntField Label="Mortgage rate (%)" ReadOnly="true" ViewBind="mortgage.rate" />
-            <SingleLineField Label="Mortgage downpayment (Wei)" ReadOnly="true" ViewBind="mortgage.downPaymentValue" />
+            <SingleLineField Label="Mortgage downpayment (Ether)" Currency="true" ReadOnly="true" ViewBind="mortgage.downPaymentValue" />
             <IntField Label="Mortgage duration (months)" ReadOnly="true" ViewBind="mortgage.mortgageDurationMonths" />
-            <SingleLineField Label="Total paid on mortgage (Wei)" ReadOnly="true" ViewBind="mortgage.totalPaid" />
+            <SingleLineField Label="Total paid on mortgage (Ether)" Currency="true" ReadOnly="true" ViewBind="mortgage.totalPaid" />
         </FieldGroup>
 
         <FieldGroup Label="Insurance details (view only)">
@@ -41,11 +41,11 @@
         </FieldGroup>
 
         <FieldGroup Label="Submit mortgage application">
-            <IntField Label="Property ID" ParamBind="propertyId" />
-            <SingleLineField Label="Property price (Wei)" ParamBind="propertyPrice" />
+            <IntField Label="Property ID" ParamBind="propertyId" Description="ID of an ERC721 HouseToken that you are interested in." />
+            <SingleLineField Label="Property price (Ether)" Currency="true" ParamBind="propertyPrice" />
             <IntField Label="Mortgage rate (%)" ParamBind="rate" />
             <IntField Label="Mortgage duration (months)" ParamBind="mortgageDurationMonths" />
-            <SingleLineField Label="Mortgage downpayment (Wei)" ParamBind="const:payValue" />
+            <SingleLineField Label="Mortgage downpayment (Ether)" Currency="true" ParamBind="const:payValue" Description="How much you want to pay up front." />
         </FieldGroup>
     </Form>
 
@@ -67,7 +67,7 @@
         </FieldGroup>
 
         <FieldGroup Label="Payment">
-            <SingleLineField Label="Amount (Wei)" ParamBind="const:payValue" />
+            <SingleLineField Label="Amount (Ether)" Currency="true" ParamBind="const:payValue" Description="You can pay any amount of Ether on your behalf, just make sure you are not behind on payments." />
         </FieldGroup>
     </Form>
 
@@ -79,7 +79,7 @@
         </FieldGroup>
 
         <FieldGroup Label="Escrow">
-            <SingleLineField Label="Amount (Wei)" ParamBind="const:payValue" />
+            <SingleLineField Label="Amount (Ether)" Currency="true" ParamBind="const:payValue" />
         </FieldGroup>
     </Form>
 
@@ -90,7 +90,7 @@
         </FieldGroup>
 
         <FieldGroup Label="Request details">
-            <MultiLineField Label="Request reason" ParamBind="reason" />
+            <MultiLineField Label="Request reason" ParamBind="reason" Description="Reason why the contract terms were violated." />
         </FieldGroup>
     </Form>
 
@@ -101,7 +101,7 @@
         </FieldGroup>
 
         <FieldGroup Label="Transfer details">
-            <SingleLineField Label="Amount (Wei)" ParamBind="const:payValue" />
+            <SingleLineField Label="Amount (Ether)" Currency="true" ParamBind="const:payValue" />
         </FieldGroup>
     </Form>
 
@@ -112,8 +112,7 @@
             <AddressField Label="Contract ETH Address" ReadOnly="true" ViewBind="const:myContractAddress" />
         </FieldGroup>
 
-        <FieldGroup Label="By submitting this transaction, you agree to give the property rights to the borrower.">
-        </FieldGroup>
+        <FieldGroup Label="By submitting this transaction, you agree to give the property rights to the borrower." />
     </Form>
 
     <!-- INSURER -->
@@ -135,7 +134,7 @@
         </FieldGroup>
 
         <FieldGroup Label="Payment details">
-            <SingleLineField Label="Amount (Wei)" ParamBind="const:payValue" />
+            <SingleLineField Label="Amount (Ether)" Currency="true" ParamBind="const:payValue" />
         </FieldGroup>
     </Form>
 
@@ -146,7 +145,7 @@
         </FieldGroup>
 
         <FieldGroup Label="Indemnity terms">
-            <BoolField Label="Terms valid" ParamBind="validity" />
+            <BoolField Label="Terms valid" ParamBind="validity" Description="Tick this box if the indemnity terms are valid." />
         </FieldGroup>
     </Form>
 </ContractForms>
