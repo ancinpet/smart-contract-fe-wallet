@@ -1,0 +1,115 @@
+﻿@using static thesis_wallet.Pages.Index
+
+<MatH3>Dashboard</MatH3>
+<MatTable Items="@sortedData" class="mat-elevation-z5" ShowPaging="false" UseSortHeaderRow="true" AllowSelection="true" SelectionChanged="SelectionChangedEvent">
+    <MatTableHeader>
+        <MatSortHeaderRow SortChanged="@SortData">
+            <MatSortHeader SortId="name"><span style="min-width:20em;">Name</span></MatSortHeader>
+            <MatSortHeader SortId="priority">Priority</MatSortHeader>
+            <MatSortHeader SortId="due">Due in</MatSortHeader>
+        </MatSortHeaderRow>
+    </MatTableHeader>
+    <MatTableRow>
+        <td>@context.Name</td>
+        <td>@context.Priority</td>
+        <td>@context.TimeLeft()</td>
+    </MatTableRow>
+</MatTable>
+
+
+@code {
+    [CascadingParameter]
+    List<TreeNodeModel> Nodes { get; set; }
+    [CascadingParameter]
+    DasContractMenu Menu { get; set; }
+
+    DashBoardItem[] sortedData = null;
+    List<DashBoardItem> items = new List<DashBoardItem>();
+
+    class DashBoardItem {
+        public DashBoardItem(TreeNodeModel node, string name, int priority, DateTime due) {
+            Node = node;
+            Name = name;
+            Priority = priority;
+            Due = due;
+        }
+        
+        public TreeNodeModel Node { get; set; }
+        public string Name { get; set; }
+        public int Priority { get; set; }
+        public DateTime Due { get; set; }
+
+        public string TimeLeft() {
+            if (Due.Ticks == 0) {
+                return "Never";
+            }
+            TimeSpan diff = Due.Subtract(DateTime.Now);
+            if (diff.TotalMinutes < 0) {
+                return $"Overdue ({Due.ToString()})";
+            }
+            if (diff.TotalMinutes < 60) {
+                return diff.Minutes.ToString() + " minute" + (diff.Minutes == 1 ? "" : "s") + $" ({Due.ToString()})";
+            }
+            if (diff.TotalHours < 24) {
+                return diff.Hours.ToString() + " hour" + (diff.Hours == 1 ? "" : "s") +  " and " + diff.Minutes.ToString() + " minute" + (diff.Minutes == 1 ? "" : "s") + $" ({Due.ToString()})";
+            }
+            if (diff.TotalDays < 32) {
+                return diff.Days.ToString() + " day" + (diff.Days == 1 ? "" : "s") +  " and " + diff.Hours.ToString() + " hour" + (diff.Hours == 1 ? "" : "s") + $" ({Due.ToString()})";
+            }
+            return diff.Days.ToString() + " day" + (diff.Days == 1 ? "" : "s") + $" ({Due.ToString()})";
+        }
+    }
+
+    public void LoadData() {
+        List<DashBoardItem> tmpItems = new List<DashBoardItem>();
+        foreach (TreeNodeModel root in Nodes) {
+            if (root.Form == null) {
+                foreach (TreeNodeModel node in root.Nodes) {
+                    if (node.Form != null) {
+                        tmpItems.Add(new DashBoardItem(node, node.Name, node.Priority, node.Due));
+                    }             
+                }
+            }
+        }
+        items = tmpItems;
+        SortData(null);
+        StateHasChanged();
+    }
+
+    void SortData(MatSortChangedEvent sort) {
+        sortedData = items.ToArray();
+        if (!(sort == null || sort.Direction == MatSortDirection.None || string.IsNullOrEmpty(sort.SortId))) {
+            Comparison<DashBoardItem> comparison = null;
+            switch (sort.SortId) {
+                case "name":
+                    comparison = (s1, s2) => string.Compare(s1.Name, s2.Name, StringComparison.InvariantCultureIgnoreCase);
+                    break;
+                case "priority":
+                    comparison = (s1, s2) => s1.Priority.CompareTo(s2.Priority);
+                    break;
+                case "due":
+                    comparison = (s1, s2) => s1.Due.CompareTo(s2.Due);
+                    break;
+            }
+            if (comparison != null) {
+                if (sort.Direction == MatSortDirection.Desc) {
+                    Array.Sort(sortedData, (s1, s2) => -1 * comparison(s1, s2));
+                } else {
+                    Array.Sort(sortedData, comparison);
+                }
+            }
+        }
+    }
+
+    public void SelectionChangedEvent(object row) {
+        if (row != null) {
+            Menu.SelectedNode = ((DashBoardItem)row).Node;
+        }
+    }
+    
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        LoadData();
+        SortData(null);
+    }
+}

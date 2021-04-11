@@ -105,8 +105,12 @@
                             <DForm @ref="menu._DForm"></DForm>
                         </CascadingValue>
                     </CascadingValue>
-            } else {
-                    <MatH5>Welcome back!</MatH5>
+                } else {
+                    <CascadingValue Value="@menu">
+                        <CascadingValue Value="@menu.ViewRootsDisplayed">
+                            <DashBoard @ref="menu._DDash"></DashBoard>
+                        </CascadingValue>
+                    </CascadingValue>
                 }
             </div>
         </div>
@@ -132,6 +136,7 @@
         menu.SelectedAccount = account;
         menu.LoadFormData(menu.SelectedNode);
         await this.InvokeAsync(StateHasChanged);
+        menu._DDash.LoadData();
     }
 
     /* MENU */
@@ -144,14 +149,31 @@
         public List<TreeNodeModel> Nodes { get; set; } = new List<TreeNodeModel>();
         public bool IsExpanded { get; set; } = true;
         public Web3 w3 { get; set; }
+        public int Priority { get; set; }
+        public DateTime Due { get; set; }
 
         public TreeNodeModel(string name, string address, Web3 w = null, DasContractMenu menu = null, DasContractItem contract = null, Form form = null) {
+            Random random = new Random();
             Menu = menu;
             Address = address;
             w3 = w;
             Name = name;
             DasContractItem = contract;
             Form = form;
+            Priority = random.Next(1, 11);
+            int times = random.Next(0, 11);
+
+            if (times == 0) {
+                Due = new DateTime(0);
+            } else if (times == 1) {
+                Due = DateTime.Now.AddMinutes(-1 * random.Next(0, 119));
+            } else if (times == 2 || times == 3 || times == 4) {
+                Due = DateTime.Now.AddMinutes(random.Next(1, 119));
+            } else if (times == 5 ||times == 6 ||times == 7) {
+                Due = DateTime.Now.AddHours(random.Next(1, 26)).AddMinutes(random.Next(1, 62));
+            } else {
+                Due = DateTime.Now.AddDays(random.Next(0, 30)).AddHours(random.Next(1, 100));
+            }
         }
 
         public async void SubmitSmartContractFunction() {
@@ -289,6 +311,7 @@
     public class DasContractMenu {
         public Index Component { get; set; }
         public DForm _DForm { get; set; }
+        public DashBoard _DDash { get; set; }
         public Web3 w3 { get; set; }
         public List<TreeNodeModel> ViewRoots { get; set; } = new List<TreeNodeModel>();
         public List<TreeNodeModel> ViewRootsDisplayed { get; set; } = new List<TreeNodeModel>();
@@ -506,6 +529,7 @@
         }
     
         public void LoadDashboard() {
+            _DDash.LoadData();
             selectedNode = null;
         }
 
@@ -597,7 +621,6 @@
                 string formFile = Component.localStorage.GetItemAsString(address);
                 DasContractItem item = null;
                 try {
-                    Console.WriteLine(address);
                     item = new DasContractItem(formFile, address, this);
                 } catch (Exception) {
                     continue;
@@ -649,6 +672,8 @@
                 }
             }
             ViewRootsDisplayed = ViewRootsDisplayedTmp;
+            Component.StateHasChanged();
+            _DDash?.LoadData();
             Component.StateHasChanged();
         }
 
