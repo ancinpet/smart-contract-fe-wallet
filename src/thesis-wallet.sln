@@ -15,6 +15,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "thesis-wallet", "thesis-wal
 		{413C8C5B-EC70-41F6-9C67-CDDC44C99455} = {413C8C5B-EC70-41F6-9C67-CDDC44C99455}
 	EndProjectSection
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "tests", "tests\tests.csproj", "{6B4C829D-AFD6-4419-906A-0D7A4CD32899}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,6 +39,10 @@ Global
 		{BBEF0F1B-F19C-4011-A2A2-E84FB1733653}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BBEF0F1B-F19C-4011-A2A2-E84FB1733653}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BBEF0F1B-F19C-4011-A2A2-E84FB1733653}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6B4C829D-AFD6-4419-906A-0D7A4CD32899}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6B4C829D-AFD6-4419-906A-0D7A4CD32899}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6B4C829D-AFD6-4419-906A-0D7A4CD32899}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6B4C829D-AFD6-4419-906A-0D7A4CD32899}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

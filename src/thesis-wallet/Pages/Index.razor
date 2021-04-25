@@ -486,7 +486,7 @@
             return prepend + '[' + third[1];
         }
 
-        private ViewToken TokenizeCall(string format) {
+        public ViewToken TokenizeCall(string format) {
             format = format.Replace(" ", String.Empty);
             ViewToken token = new ViewToken();
 
@@ -745,7 +745,7 @@
         }
     }
 
-    class ViewToken {
+    public class ViewToken {
         public string FuncName { get; set; } = "";
         public List<string> Parameters { get; set; } = new List<string>();
         public string Property { get; set; } = "";
